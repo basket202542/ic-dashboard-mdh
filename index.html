@@ -372,17 +372,82 @@ async function loadAll() {
     fetchSheet('Patient_Profile')
   ]);
   DB.bundle = b; DB.daily = d; DB.patient = p;
+  
+  // 🚀 เปิดใช้วุ้นแปลภาษา (Data Normalizer) แก้ปัญหากราฟเป็น 0
+  normalizeData();
+
   document.getElementById('upd').textContent = 'อัปเดต: ' + new Date().toLocaleTimeString('th-TH');
   populateDropdowns();
   renderAll();
 }
 
+// 🪄 วุ้นแปลภาษา: จับคู่หัวตารางภาษาไทย ให้เข้ากับตัวแปร Dashboard
+function normalizeData() {
+  // 1. แปลง Patient Profile
+  DB.patient.forEach(r => {
+    r.hn = String(r['HN'] || r.hn || '').trim();
+    r.an = String(r['AN'] || r.an || '').trim();
+    r.patientName = r['Patient Name'] || r['ชื่อ-สกุล'] || r.patientName || '';
+    r.age = r['Age'] || r['อายุ'] || r.age || '';
+    r.diagnosis = r['Diagnosis'] || r['การวินิจฉัย'] || r.diagnosis || '';
+    r.admitDate = r['Admit Date'] || r['วันที่รับไว้'] || r.Timestamp || r.timestamp || '';
+    r.infectionStatus = r['Infection Status'] || r['มีการติดเชื้อ'] || r.infectionStatus || '';
+    r.infectionSystem = r['Infection System'] || r['ระบบที่ติดเชื้อ'] || r.infectionSystem || '';
+    r.status = r['Status'] || r['สถานะ'] || r.status || 'กำลังรักษา';
+  });
+
+  // 2. แปลง Daily Cues
+  DB.daily.forEach(r => {
+    r.hn = String(r['HN'] || r.hn || '').trim();
+    let pt = DB.patient.find(p => p.hn === r.hn);
+    r.an = pt ? pt.an : (r['AN'] || r.an || '');
+    
+    r.ward = r['หน่วยงาน'] || r['Ward'] || r.ward || '';
+    r.record_date = r['วันที่ประเมิน'] || r['Timestamp'] || r.record_date || '';
+    r.bt = r['Temp'] || r.bt || '';
+    r.bp = r['BP'] || r.bp || '';
+    r.pr = r['PR'] || r.pr || '';
+    r.rr = r['RR'] || r.rr || '';
+    r.o2sat = r['O2 Sat'] || r.o2sat || '';
+    
+    let vent = String(r['เครื่องช่วยหายใจ'] || r.device_vent || '').toLowerCase();
+    r.device_vent = vent.includes('on') || vent === 'true';
+    
+    let fc = String(r['สายสวนปัสสาวะ'] || r.device_fc || '').toLowerCase();
+    r.device_fc = fc.includes('on') || fc === 'true';
+    
+    let cline = String(r['Central Line'] || r.device_cline || '').toLowerCase();
+    r.device_cline = cline.includes('on') || cline === 'true';
+    
+    let iv = String(r['สายน้ำเกลือ'] || r.device_iv || '').toLowerCase();
+    r.device_iv = iv.includes('on') || iv === 'true';
+    
+    r.culture_result = r['Culture Result'] || r.culture_result || '';
+    r.lab_cbc = r['WBC'] || r.lab_cbc || '';
+    r.daily_note = r['Note อาการเพิ่มเติม'] || r.daily_note || '';
+  });
+
+  // 3. เชื่อม Ward ให้ Patient (ดึงจาก Daily Cues ล่าสุด)
+  DB.patient.forEach(p => {
+    let cues = DB.daily.filter(d => d.hn === p.hn);
+    p.ward = cues.length > 0 ? cues[cues.length - 1].ward : 'ไม่ระบุ';
+  });
+
+  // 4. แปลง Bundle Log
+  DB.bundle.forEach(r => {
+    r.timestamp = r['Timestamp'] || r.Timestamp || '';
+    r.ward = r['Ward'] || r['หน่วยงาน'] || r.ward || '';
+    r.position = r['Position'] || r['ตำแหน่ง'] || r.position || '';
+    r.bundleType = String(r['Bundle_Type'] || r.bundleType || '').toUpperCase();
+  });
+}
+
 // ===== POPULATE DROPDOWNS =====
 function populateDropdowns() {
   const wards = [...new Set([
-    ...DB.bundle.map(r => r.Ward || r['Ward (หน่วยงาน)'] || ''),
-    ...DB.daily.map(r => r.Ward || r.ward || ''),
-    ...DB.patient.map(r => r.Ward || r.ward || '')
+    ...DB.bundle.map(r => r.ward),
+    ...DB.daily.map(r => r.ward),
+    ...DB.patient.map(r => r.ward)
   ])].filter(Boolean).sort();
 
   ['sel-ward-b','sel-ward-pos','sel-ward-dc','sel-ward-dct','sel-ward-inf','sel-ward-donut','sel-ward-pt','sel-ward-bundlecomp'].forEach(id => {
@@ -393,7 +458,6 @@ function populateDropdowns() {
     wards.forEach(w => el.insertAdjacentHTML('beforeend', `<option value="${w}">${w}</option>`));
     if(cur) el.value = cur;
   });
-  // ward comparison dropdown
   const wc = document.getElementById('sel-bundle-ward');
   if(wc) { const c=wc.value; wc.innerHTML='<option value="all">ทุก Bundle</option><option value="VAP">VAP</option><option value="CAUTI">CAUTI</option><option value="CLABSI">CLABSI</option><option value="SSI">SSI</option><option value="เชื้อดื้อยา">MDR</option><option value="HAND HYGIENE">Hand Hygiene</option>'; if(c) wc.value=c; }
 }
@@ -430,12 +494,9 @@ function calcCompliance(rows) {
   });
   return {y,n,pct:pct(y,n)};
 }
-function getBundleType(r) {
-  return (r.Bundle_Type||r['Bundle_Type']||r['bundleType']||r.D||'').toString().trim().toUpperCase();
-}
+function getBundleType(r) { return r.bundleType; }
 function destroyChart(id) { if(CH[id]){CH[id].destroy();delete CH[id];} }
 const COLORS = ['#00c9a7','#3b82f6','#f59e0b','#f43f5e','#a855f7','#22c55e','#fb923c','#e879f9','#38bdf8','#4ade80'];
-const BUNDLE_COLORS = {VAP:'#3b82f6',CAUTI:'#f59e0b',CLABSI:'#f43f5e',SSI:'#a855f7','เชื้อดื้อยา':'#10b981','HAND HYGIENE':'#6366f1',MDR:'#10b981'};
 
 // ===== TAB SWITCH =====
 function sw(tab) {
@@ -456,9 +517,9 @@ function renderBundleKPI() {
   const d = DB.bundle;
   const total = d.length;
   const {y,n,pct:op} = calcCompliance(d);
-  const wards = new Set(d.map(r=>r.Ward||r['Ward (หน่วยงาน)']||'')).size;
-  const types = new Set(d.map(r=>getBundleType(r)).filter(Boolean)).size;
-  const today = d.filter(r=>{ const dd=new Date(r.Timestamp||r.A||''); return dd.toDateString()===new Date().toDateString(); }).length;
+  const wards = new Set(d.map(r=>r.ward).filter(Boolean)).size;
+  const types = new Set(d.map(r=>r.bundleType).filter(Boolean)).size;
+  const today = d.filter(r=>{ const dd=new Date(r.timestamp); return dd.toDateString()===new Date().toDateString(); }).length;
 
   document.getElementById('kpi-bundle').innerHTML = `
     <div class="kpi c1"><div class="kpi-lbl">🎯 Overall Compliance</div><div class="kpi-val">${op??'-'}%</div><div class="kpi-sub">Y/(Y+N) ทุก Bundle</div></div>
@@ -475,15 +536,15 @@ function renderBundleTrend() {
   const period = document.getElementById('sel-period-b')?.value||'month';
 
   let rows = DB.bundle;
-  if(bSel!=='all') rows = rows.filter(r=>getBundleType(r)===bSel.toUpperCase());
-  if(wSel!=='all') rows = rows.filter(r=>(r.Ward||r['Ward (หน่วยงาน)']||'')=== wSel);
+  if(bSel!=='all') rows = rows.filter(r=>r.bundleType===bSel.toUpperCase());
+  if(wSel!=='all') rows = rows.filter(r=>r.ward===wSel);
 
   const grouped = {};
   rows.forEach(r => {
-    const k = periodKey(r.Timestamp||r.A||'', period);
+    const k = periodKey(r.timestamp, period);
     if(!grouped[k]) grouped[k]={y:0,n:0};
     for(let i=1;i<=16;i++){
-      const v=(r[`Q${i}`]||'').toString().trim().toUpperCase();
+      const v=(r[`Q${i}`]||r['q'+i]||'').toString().trim().toUpperCase();
       if(v==='Y'||v==='ทำ/ใช่') grouped[k].y++;
       else if(v==='N'||v==='ไม่ทำ') grouped[k].n++;
     }
@@ -508,9 +569,9 @@ function renderBundleTrend() {
 function renderWardComp() {
   const bSel = document.getElementById('sel-bundle-ward')?.value||'all';
   let rows = DB.bundle;
-  if(bSel!=='all') rows = rows.filter(r=>getBundleType(r)===bSel.toUpperCase());
+  if(bSel!=='all') rows = rows.filter(r=>r.bundleType===bSel.toUpperCase());
 
-  const wardMap = groupBy(rows, 'Ward');
+  const wardMap = groupBy(rows, 'ward');
   const labels = Object.keys(wardMap).slice(0,15);
   const data = labels.map(w => calcCompliance(wardMap[w]).pct??0);
   const colors = data.map(p=>pctColor(p));
@@ -527,9 +588,9 @@ function renderWardComp() {
 function renderPositionChart() {
   const wSel = document.getElementById('sel-ward-pos')?.value||'all';
   let rows = DB.bundle;
-  if(wSel!=='all') rows = rows.filter(r=>(r.Ward||r['Ward (หน่วยงาน)']||'')=== wSel);
+  if(wSel!=='all') rows = rows.filter(r=>r.ward===wSel);
 
-  const posMap = groupBy(rows, 'Position');
+  const posMap = groupBy(rows, 'position');
   const labels = Object.keys(posMap);
   const data = labels.map(p=>posMap[p].length);
 
@@ -545,13 +606,13 @@ function renderBundleTable() {
   if(!rows.length){ document.getElementById('tbl-bundle').innerHTML='<div class="empty">ยังไม่มีข้อมูล</div>'; return; }
   const html = `<table><thead><tr><th>วันที่</th><th>Ward</th><th>ตำแหน่ง</th><th>Bundle</th><th>Compliance</th></tr></thead><tbody>
   ${rows.map(r=>{
-    const bt=getBundleType(r).toLowerCase();
+    const bt=r.bundleType.toLowerCase();
     const {pct:p}=calcCompliance([r]);
     const c=p!=null?pctColor(p):'#6b84a8';
     return `<tr>
-      <td style="color:var(--muted);font-family:var(--mono);font-size:.72rem">${fmtDate(r.Timestamp||r.A)}</td>
-      <td>${r.Ward||r['Ward (หน่วยงาน)']||'-'}</td>
-      <td style="color:var(--muted)">${r.Position||r.C||'-'}</td>
+      <td style="color:var(--muted);font-family:var(--mono);font-size:.72rem">${fmtDate(r.timestamp)}</td>
+      <td>${r.ward||'-'}</td>
+      <td style="color:var(--muted)">${r.position||'-'}</td>
       <td><span class="badge b-${bt.replace(/\s+/g,'')}">${bt.toUpperCase()||'-'}</span></td>
       <td>${p!=null?`<div class="pct-bar"><div class="pct-track"><div class="pct-fill" style="width:${p}%;background:${c}"></div></div><span style="color:${c};font-family:var(--mono);font-size:.78rem;font-weight:600">${p}%</span></div>`:'-'}</td>
     </tr>`;
@@ -562,10 +623,9 @@ function renderBundleTable() {
 // ==================== ICN COMMAND ====================
 function renderICNKPI() {
   const d = DB.daily;
-  const today = d.filter(r=>{ const dd=new Date(r.Timestamp||r.A||''); return dd.toDateString()===new Date().toDateString(); }).length;
-  const wards = new Set(d.map(r=>r.Ward||r.ward||'')).size;
-  const onVent = d.filter(r=>(r.device_vent||r['Device Vent']||'').toString().toLowerCase().includes('on')||r.device_vent===true).length;
-  const onFC = d.filter(r=>(r.device_fc||r['Device FC']||'').toString().toLowerCase().includes('on')||r.device_fc===true).length;
+  const today = d.filter(r=>{ const dd=new Date(r.record_date); return dd.toDateString()===new Date().toDateString(); }).length;
+  const wards = new Set(d.map(r=>r.ward).filter(Boolean)).size;
+  const onVent = d.filter(r=>r.device_vent).length;
 
   document.getElementById('kpi-icn').innerHTML = `
     <div class="kpi c1"><div class="kpi-lbl">Daily Cues ทั้งหมด</div><div class="kpi-val">${d.length}</div><div class="kpi-sub">บันทึก</div></div>
@@ -579,18 +639,18 @@ function renderDCTrend() {
   const wSel = document.getElementById('sel-ward-dc')?.value||'all';
   const period = document.getElementById('sel-period-dc')?.value||'month';
   let rows = DB.daily;
-  if(wSel!=='all') rows = rows.filter(r=>(r.Ward||r.ward||'')=== wSel);
+  if(wSel!=='all') rows = rows.filter(r=>r.ward===wSel);
 
   const wardRows = wSel==='all' ? DB.daily : rows;
-  const allWards = wSel==='all' ? [...new Set(DB.daily.map(r=>r.Ward||r.ward||'').filter(Boolean))].slice(0,6) : [wSel];
+  const allWards = wSel==='all' ? [...new Set(DB.daily.map(r=>r.ward).filter(Boolean))].slice(0,6) : [wSel];
 
   const periodSet = new Set();
-  wardRows.forEach(r => periodSet.add(periodKey(r.Timestamp||r.record_date||r.A||'', period)));
+  wardRows.forEach(r => periodSet.add(periodKey(r.record_date, period)));
   const labels = [...periodSet].slice(-16);
 
   const datasets = allWards.map((w,i) => {
-    const wr = DB.daily.filter(r=>(r.Ward||r.ward||'')=== w);
-    const data = labels.map(lbl => wr.filter(r=>periodKey(r.Timestamp||r.record_date||r.A||'',period)===lbl).length);
+    const wr = DB.daily.filter(r=>r.ward===w);
+    const data = labels.map(lbl => wr.filter(r=>periodKey(r.record_date,period)===lbl).length);
     return {label:w, data, borderColor:COLORS[i%COLORS.length], backgroundColor:'transparent', tension:.4, borderWidth:2, pointRadius:3};
   });
 
@@ -604,10 +664,10 @@ function renderDCTrend() {
 
 function renderDeviceChart() {
   const devices = {
-    'Ventilator': DB.daily.filter(r=>(r.device_vent||r['Device Vent']||'').toString().toLowerCase().includes('on')||r.device_vent===true).length,
-    'Foley Cath': DB.daily.filter(r=>(r.device_fc||r['Device FC']||'').toString().toLowerCase().includes('on')||r.device_fc===true).length,
-    'Central Line': DB.daily.filter(r=>(r.device_cline||r['Device CLine']||'').toString().toLowerCase().includes('on')||r.device_cline===true).length,
-    'IV Cath': DB.daily.filter(r=>(r.device_iv||r['Device IV']||'').toString().toLowerCase().includes('on')||r.device_iv===true).length,
+    'Ventilator': DB.daily.filter(r=>r.device_vent).length,
+    'Foley Cath': DB.daily.filter(r=>r.device_fc).length,
+    'Central Line': DB.daily.filter(r=>r.device_cline).length,
+    'IV Cath': DB.daily.filter(r=>r.device_iv).length,
   };
   destroyChart('device');
   CH['device'] = new Chart(document.getElementById('c-device'), {
@@ -619,7 +679,7 @@ function renderDeviceChart() {
 function renderDCTable() {
   const wSel = document.getElementById('sel-ward-dct')?.value||'all';
   let rows = DB.daily;
-  if(wSel!=='all') rows = rows.filter(r=>(r.Ward||r.ward||'')=== wSel);
+  if(wSel!=='all') rows = rows.filter(r=>r.ward===wSel);
   rows = [...rows].reverse().slice(0,50);
   if(!rows.length){ document.getElementById('tbl-dc').innerHTML='<div class="empty">ยังไม่มีข้อมูล</div>'; return; }
 
@@ -627,12 +687,12 @@ function renderDCTable() {
   ${rows.map(r=>{
     const devs = [r.device_vent&&'Vent',r.device_fc&&'FC',r.device_cline&&'C-Line',r.device_iv&&'IV'].filter(Boolean).join(', ')||'-';
     return `<tr>
-      <td style="font-family:var(--mono);font-size:.72rem;color:var(--muted)">${fmtDate(r.Timestamp||r.record_date||r.A)}</td>
-      <td>${r.Ward||r.ward||'-'}</td>
-      <td style="font-family:var(--mono);color:var(--teal)">${r.HN||r.hn||'-'}</td>
-      <td style="font-family:var(--mono)">${r.AN||r.an||'-'}</td>
+      <td style="font-family:var(--mono);font-size:.72rem;color:var(--muted)">${fmtDate(r.record_date)}</td>
+      <td>${r.ward||'-'}</td>
+      <td style="font-family:var(--mono);color:var(--teal)">${r.hn||'-'}</td>
+      <td style="font-family:var(--mono)">${r.an||'-'}</td>
       <td style="color:var(--rose);font-size:.75rem">${devs}</td>
-      <td style="font-family:var(--mono)">${r.BT||r.bt||'-'}</td>
+      <td style="font-family:var(--mono)">${r.bt||'-'}</td>
       <td style="color:var(--muted);font-size:.75rem;max-width:150px;overflow:hidden;text-overflow:ellipsis">${r.culture_result||'-'}</td>
     </tr>`;
   }).join('')}</tbody></table>`;
@@ -642,8 +702,8 @@ function renderDCTable() {
 function searchAN() {
   const an = document.getElementById('an-input').value.trim();
   if(!an) return;
-  const rows = DB.daily.filter(r=>(r.AN||r.an||'').toString()===an);
-  const pt = DB.patient.find(r=>(r.AN||r.an||'').toString()===an);
+  const rows = DB.daily.filter(r=>r.an===an);
+  const pt = DB.patient.find(r=>r.an===an);
   const el = document.getElementById('an-result');
 
   if(!rows.length && !pt){ el.innerHTML='<div class="empty">ไม่พบข้อมูล AN: '+an+'</div>'; return; }
@@ -652,12 +712,12 @@ function searchAN() {
   if(pt) {
     html += `<div class="pt-card">
       <div class="pt-row">
-        <div class="pt-item"><label>HN</label><span>${pt.HN||pt.hn||'-'}</span></div>
-        <div class="pt-item"><label>AN</label><span>${pt.AN||pt.an||'-'}</span></div>
-        <div class="pt-item"><label>ชื่อ</label><span>${pt['Patient Name']||pt.patientName||'-'}</span></div>
-        <div class="pt-item"><label>อายุ</label><span>${pt.Age||pt.age||'-'} ปี</span></div>
-        <div class="pt-item"><label>Dx</label><span style="font-size:.8rem">${pt.Diagnosis||pt.diagnosis||'-'}</span></div>
-        <div class="pt-item"><label>สถานะ</label><span class="${(pt.Status||'').includes('จำหน่าย')?'st-dc':'st-active'}">${pt.Status||'กำลังรักษา'}</span></div>
+        <div class="pt-item"><label>HN</label><span>${pt.hn||'-'}</span></div>
+        <div class="pt-item"><label>AN</label><span>${pt.an||'-'}</span></div>
+        <div class="pt-item"><label>ชื่อ</label><span>${pt.patientName||'-'}</span></div>
+        <div class="pt-item"><label>อายุ</label><span>${pt.age||'-'} ปี</span></div>
+        <div class="pt-item"><label>Dx</label><span style="font-size:.8rem">${pt.diagnosis||'-'}</span></div>
+        <div class="pt-item"><label>สถานะ</label><span class="${(pt.status||'').includes('จำหน่าย')?'st-dc':'st-active'}">${pt.status||'กำลังรักษา'}</span></div>
       </div>
     </div>`;
   }
@@ -665,16 +725,16 @@ function searchAN() {
   if(rows.length) {
     html += `<table><thead><tr><th>วันที่</th><th>Temp</th><th>BP</th><th>PR</th><th>RR</th><th>O2Sat</th><th>Devices</th><th>WBC</th><th>Culture</th><th>Note</th></tr></thead><tbody>
     ${rows.map(r=>`<tr>
-      <td style="font-family:var(--mono);font-size:.72rem">${fmtDate(r.record_date||r.Timestamp||r.A)}</td>
-      <td style="font-family:var(--mono)">${r.BT||r.bt||'-'}</td>
-      <td style="font-family:var(--mono)">${r.BP||r.bp||'-'}</td>
-      <td style="font-family:var(--mono)">${r.PR||r.pr||'-'}</td>
-      <td style="font-family:var(--mono)">${r.RR||r.rr||'-'}</td>
-      <td style="font-family:var(--mono)">${r['O2 Sat']||r.o2sat||'-'}</td>
+      <td style="font-family:var(--mono);font-size:.72rem">${fmtDate(r.record_date)}</td>
+      <td style="font-family:var(--mono)">${r.bt||'-'}</td>
+      <td style="font-family:var(--mono)">${r.bp||'-'}</td>
+      <td style="font-family:var(--mono)">${r.pr||'-'}</td>
+      <td style="font-family:var(--mono)">${r.rr||'-'}</td>
+      <td style="font-family:var(--mono)">${r.o2sat||'-'}</td>
       <td style="color:var(--rose);font-size:.75rem">${[r.device_vent&&'Vent',r.device_fc&&'FC',r.device_cline&&'C-Line',r.device_iv&&'IV'].filter(Boolean).join(',')||'-'}</td>
-      <td>${r.lab_cbc||r['Lab WBC']||'-'}</td>
+      <td>${r.lab_cbc||'-'}</td>
       <td style="color:var(--amber);font-size:.75rem">${r.culture_result||'-'}</td>
-      <td style="color:var(--muted);font-size:.75rem;max-width:120px;overflow:hidden;text-overflow:ellipsis">${r.daily_note||r['Daily Note']||'-'}</td>
+      <td style="color:var(--muted);font-size:.75rem;max-width:120px;overflow:hidden;text-overflow:ellipsis">${r.daily_note||'-'}</td>
     </tr>`).join('')}</tbody></table>`;
   }
   el.innerHTML = html;
@@ -684,8 +744,8 @@ function searchAN() {
 function renderSurvKPI() {
   const d = DB.patient;
   const total = d.length;
-  const active = d.filter(r=>!(r.Status||r.status||'').toString().includes('จำหน่าย')).length;
-  const withInf = d.filter(r=>(r['Infection Status']||r.infectionStatus||'').toString().includes('มี')).length;
+  const active = d.filter(r=>!(r.status||'').includes('จำหน่าย')).length;
+  const withInf = d.filter(r=>(r.infectionStatus||'').includes('มี')).length;
   const dc = total - active;
 
   document.getElementById('kpi-surv').innerHTML = `
@@ -698,12 +758,12 @@ function renderSurvKPI() {
 
 function renderInfTrend() {
   const wSel = document.getElementById('sel-ward-inf')?.value||'all';
-  let rows = DB.patient.filter(r=>(r['Infection Status']||r.infectionStatus||'').toString().includes('มี'));
-  if(wSel!=='all') rows = rows.filter(r=>(r.Ward||r.ward||'')=== wSel);
+  let rows = DB.patient.filter(r=>(r.infectionStatus||'').includes('มี'));
+  if(wSel!=='all') rows = rows.filter(r=>r.ward===wSel);
 
   const grouped = {};
   rows.forEach(r => {
-    const k = periodKey(r.Timestamp||r['Admit Date']||r.admitDate||'', 'month');
+    const k = periodKey(r.admitDate, 'month');
     grouped[k] = (grouped[k]||0)+1;
   });
   const labels = Object.keys(grouped).slice(-12);
@@ -719,11 +779,11 @@ function renderInfTrend() {
 function renderDonut() {
   const wSel = document.getElementById('sel-ward-donut')?.value||'all';
   let rows = DB.patient;
-  if(wSel!=='all') rows = rows.filter(r=>(r.Ward||r.ward||'')=== wSel);
+  if(wSel!=='all') rows = rows.filter(r=>r.ward===wSel);
 
   const sysMap = {};
   rows.forEach(r => {
-    const sys = (r['Infection System']||r.infectionSystem||'').toString();
+    const sys = r.infectionSystem||'';
     sys.split(',').forEach(s => { s=s.trim(); if(s){ sysMap[s]=(sysMap[s]||0)+1; } });
   });
   const entries = Object.entries(sysMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
@@ -739,25 +799,25 @@ function renderPatientTable() {
   const sSel = document.getElementById('sel-status-pt')?.value||'all';
   const wSel = document.getElementById('sel-ward-pt')?.value||'all';
   let rows = DB.patient;
-  if(wSel!=='all') rows = rows.filter(r=>(r.Ward||r.ward||'')=== wSel);
-  if(sSel==='active') rows = rows.filter(r=>!(r.Status||'').toString().includes('จำหน่าย'));
-  if(sSel==='dc') rows = rows.filter(r=>(r.Status||'').toString().includes('จำหน่าย'));
+  if(wSel!=='all') rows = rows.filter(r=>r.ward===wSel);
+  if(sSel==='active') rows = rows.filter(r=>!(r.status||'').includes('จำหน่าย'));
+  if(sSel==='dc') rows = rows.filter(r=>(r.status||'').includes('จำหน่าย'));
 
   if(!rows.length){ document.getElementById('tbl-pt').innerHTML='<div class="empty">ไม่พบข้อมูล</div>'; return; }
 
   const html = `<table><thead><tr><th>HN</th><th>AN</th><th>ชื่อ-สกุล</th><th>อายุ</th><th>Ward</th><th>วันรับ</th><th>Dx</th><th>การติดเชื้อ</th><th>สถานะ</th></tr></thead><tbody>
   ${rows.slice(0,100).map(r=>{
-    const isDC = (r.Status||'').toString().includes('จำหน่าย');
-    const inf = (r['Infection System']||r.infectionSystem||'').toString();
-    const an = r.AN||r.an||'-';
+    const isDC = (r.status||'').includes('จำหน่าย');
+    const inf = r.infectionSystem||'';
+    const an = r.an||'-';
     return `<tr>
-      <td style="font-family:var(--mono);font-size:.72rem;color:var(--teal)">${r.HN||r.hn||'-'}</td>
+      <td style="font-family:var(--mono);font-size:.72rem;color:var(--teal)">${r.hn||'-'}</td>
       <td><span style="font-family:var(--mono);font-size:.75rem;cursor:pointer;color:var(--amber);text-decoration:underline" onclick="goSearchAN('${an}')">${an}</span></td>
-      <td style="font-weight:500">${r['Patient Name']||r.patientName||'-'}</td>
-      <td style="text-align:center;color:var(--muted)">${r.Age||r.age||'-'}</td>
-      <td style="color:var(--muted);font-size:.75rem">${r.Ward||r.ward||'-'}</td>
-      <td style="font-family:var(--mono);font-size:.72rem;color:var(--muted)">${fmtDate(r['Admit Date']||r.admitDate)}</td>
-      <td style="color:var(--muted);font-size:.75rem;max-width:160px;overflow:hidden;text-overflow:ellipsis">${r.Diagnosis||r.diagnosis||'-'}</td>
+      <td style="font-weight:500">${r.patientName||'-'}</td>
+      <td style="text-align:center;color:var(--muted)">${r.age||'-'}</td>
+      <td style="color:var(--muted);font-size:.75rem">${r.ward||'-'}</td>
+      <td style="font-family:var(--mono);font-size:.72rem;color:var(--muted)">${fmtDate(r.admitDate)}</td>
+      <td style="color:var(--muted);font-size:.75rem;max-width:160px;overflow:hidden;text-overflow:ellipsis">${r.diagnosis||'-'}</td>
       <td style="max-width:160px">${inf?inf.split(',').map(s=>`<span style="background:rgba(244,63,94,.1);color:#fb7185;border:1px solid rgba(244,63,94,.2);border-radius:4px;padding:1px 5px;font-size:.65rem;display:inline-block;margin:1px">${s.trim().substring(0,16)}</span>`).join(''):'<span style="color:var(--muted)">ไม่มี</span>'}</td>
       <td><span class="${isDC?'st-dc':'st-active'}">${isDC?'จำหน่าย':'กำลังรักษา'}</span></td>
     </tr>`;
