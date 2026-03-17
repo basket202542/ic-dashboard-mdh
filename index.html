@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IC Dashboard — MDH</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:#080f1a; --surface:#0d1829; --surface2:#112038; --border:#1a3050;
+  --teal:#00c9a7; --teal2:#00e5c4; --blue:#3b82f6; --amber:#f59e0b;
+  --rose:#f43f5e; --green:#22c55e; --purple:#a855f7;
+  --text:#e2eaf7; --muted:#6b84a8;
+  --font:'IBM Plex Sans Thai',sans-serif; --mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;z-index:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:40px 40px;opacity:.2;pointer-events:none}
+.wrap{position:relative;z-index:1;max-width:1500px;margin:0 auto;padding:20px 16px}
+
+/* HEADER */
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px;background:linear-gradient(135deg,rgba(0,201,167,.07) 0%,rgba(59,130,246,.07) 100%);border-radius:16px;padding:16px 20px;border:1px solid rgba(0,201,167,.15)}
+.logo{display:flex;align-items:center;gap:14px}
+.logo-icon{width:52px;height:52px;background:linear-gradient(135deg,var(--teal),var(--blue));border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 0 24px rgba(0,201,167,.4)}
+.logo h1{font-size:1.35rem;font-weight:700;color:var(--teal2);letter-spacing:-.01em}
+.logo p{font-size:.7rem;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em}
+.logo-sub{font-size:.68rem;color:rgba(0,201,167,.6);font-family:var(--mono);margin-top:2px}
+.hdr-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.live{display:flex;align-items:center;gap:6px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:20px;padding:5px 12px;font-size:.72rem;font-family:var(--mono);color:var(--green)}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
+.upd{font-size:.7rem;color:var(--muted);font-family:var(--mono)}
+.btn-ref{background:var(--surface2);border:1px solid var(--border);color:var(--teal);padding:7px 14px;border-radius:8px;cursor:pointer;font-family:var(--font);font-size:.8rem;transition:all .2s}
+.btn-ref:hover{background:var(--teal);color:var(--bg)}
+
+/* TABS */
+.tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:5px;width:fit-content;flex-wrap:wrap}
+.tab{padding:9px 20px;border-radius:10px;cursor:pointer;font-size:.83rem;font-weight:600;color:var(--muted);border:none;background:transparent;font-family:var(--font);transition:all .25s;white-space:nowrap;display:flex;align-items:center;gap:7px}
+.tab.active{background:linear-gradient(135deg,var(--teal),var(--blue));color:#fff;box-shadow:0 4px 16px rgba(0,201,167,.3)}
+.tab:not(.active):hover{background:rgba(255,255,255,.05);color:var(--text)}
+
+/* SECTION HEADER */
+.sec-hdr{display:flex;align-items:center;gap:10px;margin-bottom:20px;padding:14px 18px;border-radius:12px;position:relative;overflow:hidden}
+.sec-hdr::before{content:'';position:absolute;inset:0;opacity:.08;border-radius:12px}
+.sec-hdr.teal{background:rgba(0,201,167,.1);border:1px solid rgba(0,201,167,.2)}
+.sec-hdr.teal::before{background:linear-gradient(135deg,var(--teal),var(--blue))}
+.sec-hdr.amber{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2)}
+.sec-hdr.amber::before{background:linear-gradient(135deg,var(--amber),#ef4444)}
+.sec-hdr.rose{background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.2)}
+.sec-hdr.rose::before{background:linear-gradient(135deg,var(--rose),var(--purple))}
+.sec-hdr-icon{font-size:1.6rem;line-height:1}
+.sec-hdr-text h2{font-size:1.1rem;font-weight:700;color:var(--text)}
+.sec-hdr-text p{font-size:.72rem;color:var(--muted);font-family:var(--mono);margin-top:2px}
+
+/* PAGE */
+.page{display:none}.page.active{display:block}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:22px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;position:relative;overflow:hidden;transition:transform .2s}
+.kpi:hover{transform:translateY(-2px);border-color:var(--teal)}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:14px 14px 0 0}
+.kpi.c1::before{background:linear-gradient(90deg,var(--teal),var(--blue))}
+.kpi.c2::before{background:linear-gradient(90deg,var(--green),var(--teal))}
+.kpi.c3::before{background:linear-gradient(90deg,var(--amber),#ef4444)}
+.kpi.c4::before{background:linear-gradient(90deg,var(--rose),var(--purple))}
+.kpi.c5::before{background:linear-gradient(90deg,var(--purple),var(--blue))}
+.kpi-lbl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;font-family:var(--mono)}
+.kpi-val{font-size:1.8rem;font-weight:700;font-family:var(--mono);line-height:1}
+.kpi.c1 .kpi-val{color:var(--teal2)}.kpi.c2 .kpi-val{color:var(--green)}.kpi.c3 .kpi-val{color:var(--amber)}.kpi.c4 .kpi-val{color:var(--rose)}.kpi.c5 .kpi-val{color:var(--purple)}
+.kpi-sub{font-size:.7rem;color:var(--muted);margin-top:4px}
+
+/* GRID */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
+.full{grid-column:1/-1}
+@media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr}}
+
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:8px}
+.card-title{font-size:.85rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.card-sub{font-size:.7rem;color:var(--muted);margin-bottom:14px;font-family:var(--mono)}
+.chart-wrap{position:relative}
+
+/* CONTROLS */
+.ctrl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+select.mini{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:5px 10px;border-radius:7px;font-size:.75rem;font-family:var(--font);cursor:pointer;outline:none}
+select.mini:focus{border-color:var(--teal)}
+input.search-box{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 12px;border-radius:7px;font-size:.8rem;font-family:var(--mono);outline:none;width:180px;transition:border .2s}
+input.search-box:focus{border-color:var(--teal)}
+input.search-box::placeholder{color:var(--muted)}
+.btn-search{background:linear-gradient(135deg,var(--teal),var(--blue));color:#fff;border:none;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:.78rem;font-family:var(--font);transition:opacity .2s}
+.btn-search:hover{opacity:.85}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto;margin-top:8px}
+table{width:100%;border-collapse:collapse;font-size:.78rem}
+th{background:var(--surface2);color:var(--muted);font-weight:600;padding:9px 11px;text-align:left;font-family:var(--mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:9px 11px;border-bottom:1px solid rgba(26,48,80,.4);white-space:nowrap}
+tr:hover td{background:rgba(0,201,167,.04)}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.68rem;font-family:var(--mono);font-weight:600}
+.b-vap{background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.3)}
+.b-cauti{background:rgba(245,158,11,.15);color:#fcd34d;border:1px solid rgba(245,158,11,.3)}
+.b-clabsi{background:rgba(244,63,94,.15);color:#fb7185;border:1px solid rgba(244,63,94,.3)}
+.b-ssi{background:rgba(168,85,247,.15);color:#c084fc;border:1px solid rgba(168,85,247,.3)}
+.b-mdr,.b-เชื้อดื้อยา{background:rgba(16,185,129,.15);color:#34d399;border:1px solid rgba(16,185,129,.3)}
+.b-hand,.b-handhygiene{background:rgba(99,102,241,.15);color:#a5b4fc;border:1px solid rgba(99,102,241,.3)}
+.pct-bar{display:flex;align-items:center;gap:7px}
+.pct-track{flex:1;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;min-width:50px}
+.pct-fill{height:100%;border-radius:3px;transition:width .6s}
+.st-active{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.25);padding:2px 8px;border-radius:20px;font-size:.68rem;font-family:var(--mono)}
+.st-dc{background:rgba(107,132,168,.12);color:var(--muted);border:1px solid rgba(107,132,168,.25);padding:2px 8px;border-radius:20px;font-size:.68rem;font-family:var(--mono)}
+
+/* LOADING / EMPTY */
+.loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--muted);flex-direction:column;gap:10px}
+.spin{width:28px;height:28px;border:2.5px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:40px;color:var(--muted);font-size:.85rem}
+
+/* PATIENT DETAIL */
+.pt-card{background:var(--surface2);border:1px solid var(--teal);border-radius:12px;padding:16px;margin-bottom:16px}
+.pt-row{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:8px}
+.pt-item label{font-size:.65rem;color:var(--muted);font-family:var(--mono);text-transform:uppercase;display:block;margin-bottom:2px}
+.pt-item span{font-size:.9rem;font-weight:600;color:var(--teal2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🛡️</div>
+    <div>
+      <h1>Enterprise IC Dashboard</h1>
+      <p>Mukdahan Hospital · Infection Control &amp; Prevention</p>
+      <div class="logo-sub">🏥 โรงพยาบาลมุกดาหาร · กลุ่มงาน IC</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="live"><div class="live-dot"></div>🔴 Live Data</div>
+        <button class="btn-ref" onclick="loadAll()">⟳ Refresh</button>
+      </div>
+      <div class="upd" id="upd">--</div>
+    </div>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="sw('bundle')">📊 Bundle Dashboard</button>
+  <button class="tab" onclick="sw('icn')">🎯 ICN Command</button>
+  <button class="tab" onclick="sw('surv')">🏥 Surveillance</button>
+</div>
+
+<!-- =================== BUNDLE =================== -->
+<div class="page active" id="page-bundle">
+  <div class="sec-hdr teal">
+    <div class="sec-hdr-icon">📊</div>
+    <div class="sec-hdr-text">
+      <h2>Bundle Compliance Dashboard</h2>
+      <p>Interactive Control Panel · วิเคราะห์ความสอดคล้องในการปฏิบัติตาม Bundle of Care</p>
+    </div>
+  </div>
+  <div class="kpi-grid" id="kpi-bundle"><div class="loading"><div class="spin"></div></div></div>
+
+  <!-- Compliance Trend -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-hdr">
+      <div>
+        <div class="card-title"><span class="dot" style="background:var(--teal)"></span>📈 Compliance Rate Trend (%)</div>
+        <div class="card-sub">กรอง Bundle / Ward ได้ — คำนวณ Y/(Y+N) ไม่นับ N/A</div>
+      </div>
+      <div class="ctrl">
+        <select class="mini" id="sel-bundle" onchange="renderBundleTrend()">
+          <option value="all">ทุก Bundle</option>
+          <option value="VAP">VAP</option><option value="CAUTI">CAUTI</option>
+          <option value="CLABSI">CLABSI</option><option value="SSI">SSI</option>
+          <option value="เชื้อดื้อยา">MDR</option><option value="HAND HYGIENE">Hand Hygiene</option>
+        </select>
+        <select class="mini" id="sel-ward-b" onchange="renderBundleTrend()"><option value="all">ทุก Ward</option></select>
+        <select class="mini" id="sel-period-b" onchange="renderBundleTrend()">
+          <option value="month">รายเดือน</option>
+          <option value="week">รายสัปดาห์</option>
+          <option value="day">รายวัน</option>
+        </select>
+      </div>
+    </div>
+    <div class="chart-wrap"><canvas id="c-trend" height="140"></canvas></div>
+  </div>
+
+  <div class="grid2">
+    <!-- Ward Comparison -->
+    <div class="card">
+      <div class="card-hdr">
+        <div>
+          <div class="card-title"><span class="dot" style="background:var(--amber)"></span>🏨 Ward Comparison</div>
+          <div class="card-sub">Compliance % เปรียบเทียบระหว่าง Ward</div>
+        </div>
+        <select class="mini" id="sel-bundle-ward" onchange="renderWardComp()">
+          <option value="all">ทุก Bundle</option>
+          <option value="VAP">VAP</option><option value="CAUTI">CAUTI</option>
+          <option value="CLABSI">CLABSI</option><option value="SSI">SSI</option>
+          <option value="เชื้อดื้อยา">MDR</option><option value="HAND HYGIENE">Hand Hygiene</option>
+        </select>
+      </div>
+      <div class="chart-wrap"><canvas id="c-ward" height="200"></canvas></div>
+    </div>
+
+    <!-- Position Analytics -->
+    <div class="card">
+      <div class="card-hdr">
+        <div>
+          <div class="card-title"><span class="dot" style="background:var(--purple)"></span>👩‍⚕️ Position Analytics</div>
+          <div class="card-sub">จำนวนการประเมินแยกตามตำแหน่ง</div>
+        </div>
+        <select class="mini" id="sel-ward-pos" onchange="renderPositionChart()"><option value="all">ทุก Ward</option></select>
+      </div>
+      <div class="chart-wrap"><canvas id="c-pos" height="200"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Raw table -->
+  <div class="card">
+    <div class="card-title" style="margin-bottom:12px"><span class="dot" style="background:var(--green)"></span>📋 ประวัติการประเมินล่าสุด (50 รายการ)</div>
+    <div class="tbl-wrap" id="tbl-bundle"><div class="loading"><div class="spin"></div></div></div>
+  </div>
+</div>
+
+<!-- =================== ICN COMMAND =================== -->
+<div class="page" id="page-icn">
+  <div class="sec-hdr amber">
+    <div class="sec-hdr-icon">🎯</div>
+    <div class="sec-hdr-text">
+      <h2>ICN Command Center</h2>
+      <p>Daily Cues Timeline · AN Search · Device Utilization · ติดตามผู้ป่วยแบบ Real-time</p>
+    </div>
+  </div>
+  <div class="kpi-grid" id="kpi-icn"><div class="loading"><div class="spin"></div></div></div>
+
+  <div class="grid2">
+    <!-- Daily Cues Trend -->
+    <div class="card">
+      <div class="card-hdr">
+        <div>
+          <div class="card-title"><span class="dot" style="background:var(--teal)"></span>📅 Daily Cues Trend</div>
+          <div class="card-sub">Record Count แยก Ward ตามเวลา</div>
+        </div>
+        <div class="ctrl">
+          <select class="mini" id="sel-ward-dc" onchange="renderDCTrend()"><option value="all">ทุก Ward</option></select>
+          <select class="mini" id="sel-period-dc" onchange="renderDCTrend()">
+            <option value="month">รายเดือน</option>
+            <option value="week">รายสัปดาห์</option>
+            <option value="day">รายวัน</option>
+          </select>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="c-dc-trend" height="200"></canvas></div>
+    </div>
+
+    <!-- Device Utilization -->
+    <div class="card">
+      <div class="card-hdr">
+        <div>
+          <div class="card-title"><span class="dot" style="background:var(--rose)"></span>🩺 Device Utilization</div>
+          <div class="card-sub">อัตราการใช้อุปกรณ์คาสาย</div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="c-device" height="200"></canvas></div>
+    </div>
+  </div>
+
+  <!-- AN Search -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title" style="margin-bottom:12px"><span class="dot" style="background:var(--amber)"></span>🔍 AN Search — ค้นหา Daily Cues รายผู้ป่วย</div>
+    <div class="ctrl" style="margin-bottom:14px">
+      <input class="search-box" id="an-input" placeholder="พิมพ์ AN..." onkeydown="if(event.key==='Enter')searchAN()">
+      <button class="btn-search" onclick="searchAN()">🔍 ค้นหา</button>
+    </div>
+    <div id="an-result"></div>
+  </div>
+
+  <!-- Daily Cues timeline table -->
+  <div class="card">
+    <div class="card-title" style="margin-bottom:12px"><span class="dot" style="background:var(--blue)"></span>🗓️ Daily Cues Timeline</div>
+    <div class="ctrl" style="margin-bottom:12px">
+      <select class="mini" id="sel-ward-dct" onchange="renderDCTable()"><option value="all">ทุก Ward</option></select>
+    </div>
+    <div class="tbl-wrap" id="tbl-dc"><div class="loading"><div class="spin"></div></div></div>
+  </div>
+</div>
+
+<!-- =================== SURVEILLANCE =================== -->
+<div class="page" id="page-surv">
+  <div class="sec-hdr rose">
+    <div class="sec-hdr-icon">🔬</div>
+    <div class="sec-hdr-text">
+      <h2>IC Surveillance System</h2>
+      <p>ระบบเฝ้าระวังการติดเชื้อ · Patient Profile · Infection Trend · Issue Analysis</p>
+    </div>
+  </div>
+  <div class="kpi-grid" id="kpi-surv"><div class="loading"><div class="spin"></div></div></div>
+
+  <div class="grid2">
+    <!-- Infection Trend -->
+    <div class="card">
+      <div class="card-hdr">
+        <div>
+          <div class="card-title"><span class="dot" style="background:var(--rose)"></span>🦠 Infection Trend</div>
+          <div class="card-sub">จำนวน New Infection รายเดือน</div>
+        </div>
+        <select class="mini" id="sel-ward-inf" onchange="renderInfTrend()"><option value="all">ทุก Ward</option></select>
+      </div>
+      <div class="chart-wrap"><canvas id="c-inf-trend" height="200"></canvas></div>
+    </div>
+
+    <!-- Infection Type Donut -->
+    <div class="card">
+      <div class="card-hdr">
+        <div>
+          <div class="card-title"><span class="dot" style="background:var(--purple)"></span>🎯 Issue Analysis by Position</div>
+          <div class="card-sub">สัดส่วนตามระบบที่ติดเชื้อ</div>
+        </div>
+        <select class="mini" id="sel-ward-donut" onchange="renderDonut()"><option value="all">ทุก Ward</option></select>
+      </div>
+      <div class="chart-wrap"><canvas id="c-donut" height="200"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Patient table -->
+  <div class="card">
+    <div class="card-hdr">
+      <div class="card-title"><span class="dot" style="background:var(--teal)"></span>👤 รายชื่อผู้ป่วยในระบบเฝ้าระวัง</div>
+      <div class="ctrl">
+        <select class="mini" id="sel-status-pt" onchange="renderPatientTable()">
+          <option value="all">ทุกสถานะ</option>
+          <option value="active">กำลังรักษา</option>
+          <option value="dc">จำหน่ายแล้ว</option>
+        </select>
+        <select class="mini" id="sel-ward-pt" onchange="renderPatientTable()"><option value="all">ทุก Ward</option></select>
+      </div>
+    </div>
+    <div class="card-sub">คลิก AN เพื่อดู Daily Cues</div>
+    <div class="tbl-wrap" id="tbl-pt"><div class="loading"><div class="spin"></div></div></div>
+  </div>
+</div>
+
+</div><!-- end wrap -->
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbwYYomUMt7OcyNy5mfpLSbGH-UG3oSq2nIXLrQllaXjv83oBEfWQWeIwOIptbNaF4dgEQ/exec';
+let DB = { bundle:[], daily:[], patient:[] };
+let CH = {};
+
+// ===== FETCH =====
+async function fetchSheet(sheet) {
+  try {
+    const r = await fetch(`${API}?api=true&sheet=${sheet}`);
+    const j = await r.json();
+    return Array.isArray(j) ? j : [];
+  } catch(e) { console.error(sheet, e); return []; }
+}
+
+async function loadAll() {
+  document.getElementById('upd').textContent = 'กำลังโหลด...';
+  const [b, d, p] = await Promise.all([
+    fetchSheet('Master_Bundle_Log'),
+    fetchSheet('Daily_Cues'),
+    fetchSheet('Patient_Profile')
+  ]);
+  DB.bundle = b; DB.daily = d; DB.patient = p;
+  document.getElementById('upd').textContent = 'อัปเดต: ' + new Date().toLocaleTimeString('th-TH');
+  populateDropdowns();
+  renderAll();
+}
+
+// ===== POPULATE DROPDOWNS =====
+function populateDropdowns() {
+  const wards = [...new Set([
+    ...DB.bundle.map(r => r.Ward || r['Ward (หน่วยงาน)'] || ''),
+    ...DB.daily.map(r => r.Ward || r.ward || ''),
+    ...DB.patient.map(r => r.Ward || r.ward || '')
+  ])].filter(Boolean).sort();
+
+  ['sel-ward-b','sel-ward-pos','sel-ward-dc','sel-ward-dct','sel-ward-inf','sel-ward-donut','sel-ward-pt','sel-ward-bundlecomp'].forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    const cur = el.value;
+    el.innerHTML = '<option value="all">ทุก Ward</option>';
+    wards.forEach(w => el.insertAdjacentHTML('beforeend', `<option value="${w}">${w}</option>`));
+    if(cur) el.value = cur;
+  });
+  // ward comparison dropdown
+  const wc = document.getElementById('sel-bundle-ward');
+  if(wc) { const c=wc.value; wc.innerHTML='<option value="all">ทุก Bundle</option><option value="VAP">VAP</option><option value="CAUTI">CAUTI</option><option value="CLABSI">CLABSI</option><option value="SSI">SSI</option><option value="เชื้อดื้อยา">MDR</option><option value="HAND HYGIENE">Hand Hygiene</option>'; if(c) wc.value=c; }
+}
+
+// ===== UTILS =====
+function pct(y, n) { return (y+n)>0 ? Math.round(y/(y+n)*100) : null; }
+function pctColor(p) { return p>=80?'#22c55e':p>=60?'#f59e0b':'#f43f5e'; }
+function fmtDate(v) {
+  if(!v) return '-';
+  const d = new Date(v);
+  return isNaN(d) ? v : d.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'});
+}
+function groupBy(arr, key) {
+  return arr.reduce((a,r) => { const k=r[key]||'?'; (a[k]=a[k]||[]).push(r); return a; }, {});
+}
+function periodKey(dateStr, period) {
+  const d = new Date(dateStr);
+  if(isNaN(d)) return '?';
+  if(period==='day') return d.toLocaleDateString('th-TH',{day:'numeric',month:'short'});
+  if(period==='week') {
+    const w = new Date(d); w.setDate(d.getDate()-d.getDay());
+    return w.toLocaleDateString('th-TH',{day:'numeric',month:'short'});
+  }
+  return d.toLocaleDateString('th-TH',{month:'short',year:'2-digit'});
+}
+function calcCompliance(rows) {
+  let y=0,n=0;
+  rows.forEach(r => {
+    for(let i=1;i<=16;i++) {
+      const v=(r[`Q${i}`]||r['q'+i]||'').toString().trim().toUpperCase();
+      if(v==='Y'||v==='ทำ/ใช่') y++;
+      else if(v==='N'||v==='ไม่ทำ') n++;
+    }
+  });
+  return {y,n,pct:pct(y,n)};
+}
+function getBundleType(r) {
+  return (r.Bundle_Type||r['Bundle_Type']||r['bundleType']||r.D||'').toString().trim().toUpperCase();
+}
+function destroyChart(id) { if(CH[id]){CH[id].destroy();delete CH[id];} }
+const COLORS = ['#00c9a7','#3b82f6','#f59e0b','#f43f5e','#a855f7','#22c55e','#fb923c','#e879f9','#38bdf8','#4ade80'];
+const BUNDLE_COLORS = {VAP:'#3b82f6',CAUTI:'#f59e0b',CLABSI:'#f43f5e',SSI:'#a855f7','เชื้อดื้อยา':'#10b981','HAND HYGIENE':'#6366f1',MDR:'#10b981'};
+
+// ===== TAB SWITCH =====
+function sw(tab) {
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['bundle','icn','surv'][i]===tab));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+tab).classList.add('active');
+}
+
+// ===== RENDER ALL =====
+function renderAll() {
+  renderBundleKPI(); renderBundleTrend(); renderWardComp(); renderPositionChart(); renderBundleTable();
+  renderICNKPI(); renderDCTrend(); renderDeviceChart(); renderDCTable();
+  renderSurvKPI(); renderInfTrend(); renderDonut(); renderPatientTable();
+}
+
+// ==================== BUNDLE ====================
+function renderBundleKPI() {
+  const d = DB.bundle;
+  const total = d.length;
+  const {y,n,pct:op} = calcCompliance(d);
+  const wards = new Set(d.map(r=>r.Ward||r['Ward (หน่วยงาน)']||'')).size;
+  const types = new Set(d.map(r=>getBundleType(r)).filter(Boolean)).size;
+  const today = d.filter(r=>{ const dd=new Date(r.Timestamp||r.A||''); return dd.toDateString()===new Date().toDateString(); }).length;
+
+  document.getElementById('kpi-bundle').innerHTML = `
+    <div class="kpi c1"><div class="kpi-lbl">🎯 Overall Compliance</div><div class="kpi-val">${op??'-'}%</div><div class="kpi-sub">Y/(Y+N) ทุก Bundle</div></div>
+    <div class="kpi c2"><div class="kpi-lbl">📋 การประเมินทั้งหมด</div><div class="kpi-val">${total}</div><div class="kpi-sub">ครั้ง</div></div>
+    <div class="kpi c3"><div class="kpi-lbl">⚡ ประเมินวันนี้</div><div class="kpi-val">${today}</div><div class="kpi-sub">ครั้ง</div></div>
+    <div class="kpi c4"><div class="kpi-lbl">🧩 ประเภท Bundle</div><div class="kpi-val">${types}</div><div class="kpi-sub">ประเภท</div></div>
+    <div class="kpi c5"><div class="kpi-lbl">🏨 Ward ที่ประเมิน</div><div class="kpi-val">${wards}</div><div class="kpi-sub">หน่วยงาน</div></div>
+  `;
+}
+
+function renderBundleTrend() {
+  const bSel = document.getElementById('sel-bundle')?.value||'all';
+  const wSel = document.getElementById('sel-ward-b')?.value||'all';
+  const period = document.getElementById('sel-period-b')?.value||'month';
+
+  let rows = DB.bundle;
+  if(bSel!=='all') rows = rows.filter(r=>getBundleType(r)===bSel.toUpperCase());
+  if(wSel!=='all') rows = rows.filter(r=>(r.Ward||r['Ward (หน่วยงาน)']||'')=== wSel);
+
+  const grouped = {};
+  rows.forEach(r => {
+    const k = periodKey(r.Timestamp||r.A||'', period);
+    if(!grouped[k]) grouped[k]={y:0,n:0};
+    for(let i=1;i<=16;i++){
+      const v=(r[`Q${i}`]||'').toString().trim().toUpperCase();
+      if(v==='Y'||v==='ทำ/ใช่') grouped[k].y++;
+      else if(v==='N'||v==='ไม่ทำ') grouped[k].n++;
+    }
+  });
+
+  const labels = Object.keys(grouped).slice(-20);
+  const data = labels.map(k => pct(grouped[k].y, grouped[k].n));
+
+  destroyChart('trend');
+  CH['trend'] = new Chart(document.getElementById('c-trend'), {
+    type:'line',
+    data:{labels, datasets:[{
+      label:'Compliance %', data, borderColor:'#00c9a7', backgroundColor:'rgba(0,201,167,.1)',
+      tension:.4, fill:true, pointBackgroundColor:'#00c9a7', pointRadius:4, borderWidth:2.5
+    }]},
+    options:{responsive:true, plugins:{legend:{display:false}},
+      scales:{y:{min:0,max:100,ticks:{color:'#6b84a8',callback:v=>v+'%'},grid:{color:'#1a3050'}},
+              x:{ticks:{color:'#e2eaf7',font:{size:10}},grid:{display:false}}}}
+  });
+}
+
+function renderWardComp() {
+  const bSel = document.getElementById('sel-bundle-ward')?.value||'all';
+  let rows = DB.bundle;
+  if(bSel!=='all') rows = rows.filter(r=>getBundleType(r)===bSel.toUpperCase());
+
+  const wardMap = groupBy(rows, 'Ward');
+  const labels = Object.keys(wardMap).slice(0,15);
+  const data = labels.map(w => calcCompliance(wardMap[w]).pct??0);
+  const colors = data.map(p=>pctColor(p));
+
+  destroyChart('ward');
+  CH['ward'] = new Chart(document.getElementById('c-ward'), {
+    type:'bar', data:{labels, datasets:[{label:'Compliance %',data,backgroundColor:colors.map(c=>c+'99'),borderColor:colors,borderWidth:2,borderRadius:5}]},
+    options:{responsive:true,indexAxis:'y',plugins:{legend:{display:false}},
+      scales:{x:{min:0,max:100,ticks:{color:'#6b84a8',callback:v=>v+'%'},grid:{color:'#1a3050'}},
+              y:{ticks:{color:'#e2eaf7',font:{size:10}},grid:{display:false}}}}
+  });
+}
+
+function renderPositionChart() {
+  const wSel = document.getElementById('sel-ward-pos')?.value||'all';
+  let rows = DB.bundle;
+  if(wSel!=='all') rows = rows.filter(r=>(r.Ward||r['Ward (หน่วยงาน)']||'')=== wSel);
+
+  const posMap = groupBy(rows, 'Position');
+  const labels = Object.keys(posMap);
+  const data = labels.map(p=>posMap[p].length);
+
+  destroyChart('pos');
+  CH['pos'] = new Chart(document.getElementById('c-pos'), {
+    type:'doughnut', data:{labels, datasets:[{data, backgroundColor:COLORS.map(c=>c+'cc'), borderColor:COLORS, borderWidth:2, hoverOffset:6}]},
+    options:{responsive:true,plugins:{legend:{labels:{color:'#e2eaf7',font:{size:11}}}},cutout:'55%'}
+  });
+}
+
+function renderBundleTable() {
+  const rows = [...DB.bundle].reverse().slice(0,50);
+  if(!rows.length){ document.getElementById('tbl-bundle').innerHTML='<div class="empty">ยังไม่มีข้อมูล</div>'; return; }
+  const html = `<table><thead><tr><th>วันที่</th><th>Ward</th><th>ตำแหน่ง</th><th>Bundle</th><th>Compliance</th></tr></thead><tbody>
+  ${rows.map(r=>{
+    const bt=getBundleType(r).toLowerCase();
+    const {pct:p}=calcCompliance([r]);
+    const c=p!=null?pctColor(p):'#6b84a8';
+    return `<tr>
+      <td style="color:var(--muted);font-family:var(--mono);font-size:.72rem">${fmtDate(r.Timestamp||r.A)}</td>
+      <td>${r.Ward||r['Ward (หน่วยงาน)']||'-'}</td>
+      <td style="color:var(--muted)">${r.Position||r.C||'-'}</td>
+      <td><span class="badge b-${bt.replace(/\s+/g,'')}">${bt.toUpperCase()||'-'}</span></td>
+      <td>${p!=null?`<div class="pct-bar"><div class="pct-track"><div class="pct-fill" style="width:${p}%;background:${c}"></div></div><span style="color:${c};font-family:var(--mono);font-size:.78rem;font-weight:600">${p}%</span></div>`:'-'}</td>
+    </tr>`;
+  }).join('')}</tbody></table>`;
+  document.getElementById('tbl-bundle').innerHTML = html;
+}
+
+// ==================== ICN COMMAND ====================
+function renderICNKPI() {
+  const d = DB.daily;
+  const today = d.filter(r=>{ const dd=new Date(r.Timestamp||r.A||''); return dd.toDateString()===new Date().toDateString(); }).length;
+  const wards = new Set(d.map(r=>r.Ward||r.ward||'')).size;
+  const onVent = d.filter(r=>(r.device_vent||r['Device Vent']||'').toString().toLowerCase().includes('on')||r.device_vent===true).length;
+  const onFC = d.filter(r=>(r.device_fc||r['Device FC']||'').toString().toLowerCase().includes('on')||r.device_fc===true).length;
+
+  document.getElementById('kpi-icn').innerHTML = `
+    <div class="kpi c1"><div class="kpi-lbl">Daily Cues ทั้งหมด</div><div class="kpi-val">${d.length}</div><div class="kpi-sub">บันทึก</div></div>
+    <div class="kpi c2"><div class="kpi-lbl">บันทึกวันนี้</div><div class="kpi-val">${today}</div><div class="kpi-sub">รายการ</div></div>
+    <div class="kpi c3"><div class="kpi-lbl">Ward ที่บันทึก</div><div class="kpi-val">${wards}</div><div class="kpi-sub">หน่วยงาน</div></div>
+    <div class="kpi c4"><div class="kpi-lbl">On Ventilator</div><div class="kpi-val">${onVent}</div><div class="kpi-sub">บันทึก</div></div>
+  `;
+}
+
+function renderDCTrend() {
+  const wSel = document.getElementById('sel-ward-dc')?.value||'all';
+  const period = document.getElementById('sel-period-dc')?.value||'month';
+  let rows = DB.daily;
+  if(wSel!=='all') rows = rows.filter(r=>(r.Ward||r.ward||'')=== wSel);
+
+  const wardRows = wSel==='all' ? DB.daily : rows;
+  const allWards = wSel==='all' ? [...new Set(DB.daily.map(r=>r.Ward||r.ward||'').filter(Boolean))].slice(0,6) : [wSel];
+
+  const periodSet = new Set();
+  wardRows.forEach(r => periodSet.add(periodKey(r.Timestamp||r.record_date||r.A||'', period)));
+  const labels = [...periodSet].slice(-16);
+
+  const datasets = allWards.map((w,i) => {
+    const wr = DB.daily.filter(r=>(r.Ward||r.ward||'')=== w);
+    const data = labels.map(lbl => wr.filter(r=>periodKey(r.Timestamp||r.record_date||r.A||'',period)===lbl).length);
+    return {label:w, data, borderColor:COLORS[i%COLORS.length], backgroundColor:'transparent', tension:.4, borderWidth:2, pointRadius:3};
+  });
+
+  destroyChart('dctrend');
+  CH['dctrend'] = new Chart(document.getElementById('c-dc-trend'), {
+    type:'line', data:{labels, datasets},
+    options:{responsive:true,plugins:{legend:{labels:{color:'#e2eaf7',font:{size:10}}}},
+      scales:{y:{ticks:{color:'#6b84a8'},grid:{color:'#1a3050'}},x:{ticks:{color:'#e2eaf7',font:{size:10}},grid:{display:false}}}}
+  });
+}
+
+function renderDeviceChart() {
+  const devices = {
+    'Ventilator': DB.daily.filter(r=>(r.device_vent||r['Device Vent']||'').toString().toLowerCase().includes('on')||r.device_vent===true).length,
+    'Foley Cath': DB.daily.filter(r=>(r.device_fc||r['Device FC']||'').toString().toLowerCase().includes('on')||r.device_fc===true).length,
+    'Central Line': DB.daily.filter(r=>(r.device_cline||r['Device CLine']||'').toString().toLowerCase().includes('on')||r.device_cline===true).length,
+    'IV Cath': DB.daily.filter(r=>(r.device_iv||r['Device IV']||'').toString().toLowerCase().includes('on')||r.device_iv===true).length,
+  };
+  destroyChart('device');
+  CH['device'] = new Chart(document.getElementById('c-device'), {
+    type:'bar', data:{labels:Object.keys(devices), datasets:[{label:'จำนวนบันทึก',data:Object.values(devices),backgroundColor:['#f43f5e99','#f59e0b99','#3b82f699','#22c55e99'],borderColor:['#f43f5e','#f59e0b','#3b82f6','#22c55e'],borderWidth:2,borderRadius:6}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{ticks:{color:'#6b84a8'},grid:{color:'#1a3050'}},x:{ticks:{color:'#e2eaf7'},grid:{display:false}}}}
+  });
+}
+
+function renderDCTable() {
+  const wSel = document.getElementById('sel-ward-dct')?.value||'all';
+  let rows = DB.daily;
+  if(wSel!=='all') rows = rows.filter(r=>(r.Ward||r.ward||'')=== wSel);
+  rows = [...rows].reverse().slice(0,50);
+  if(!rows.length){ document.getElementById('tbl-dc').innerHTML='<div class="empty">ยังไม่มีข้อมูล</div>'; return; }
+
+  const html = `<table><thead><tr><th>Timestamp</th><th>Ward</th><th>HN</th><th>AN</th><th>Devices</th><th>Temp</th><th>Culture</th></tr></thead><tbody>
+  ${rows.map(r=>{
+    const devs = [r.device_vent&&'Vent',r.device_fc&&'FC',r.device_cline&&'C-Line',r.device_iv&&'IV'].filter(Boolean).join(', ')||'-';
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:.72rem;color:var(--muted)">${fmtDate(r.Timestamp||r.record_date||r.A)}</td>
+      <td>${r.Ward||r.ward||'-'}</td>
+      <td style="font-family:var(--mono);color:var(--teal)">${r.HN||r.hn||'-'}</td>
+      <td style="font-family:var(--mono)">${r.AN||r.an||'-'}</td>
+      <td style="color:var(--rose);font-size:.75rem">${devs}</td>
+      <td style="font-family:var(--mono)">${r.BT||r.bt||'-'}</td>
+      <td style="color:var(--muted);font-size:.75rem;max-width:150px;overflow:hidden;text-overflow:ellipsis">${r.culture_result||'-'}</td>
+    </tr>`;
+  }).join('')}</tbody></table>`;
+  document.getElementById('tbl-dc').innerHTML = html;
+}
+
+function searchAN() {
+  const an = document.getElementById('an-input').value.trim();
+  if(!an) return;
+  const rows = DB.daily.filter(r=>(r.AN||r.an||'').toString()===an);
+  const pt = DB.patient.find(r=>(r.AN||r.an||'').toString()===an);
+  const el = document.getElementById('an-result');
+
+  if(!rows.length && !pt){ el.innerHTML='<div class="empty">ไม่พบข้อมูล AN: '+an+'</div>'; return; }
+
+  let html = '';
+  if(pt) {
+    html += `<div class="pt-card">
+      <div class="pt-row">
+        <div class="pt-item"><label>HN</label><span>${pt.HN||pt.hn||'-'}</span></div>
+        <div class="pt-item"><label>AN</label><span>${pt.AN||pt.an||'-'}</span></div>
+        <div class="pt-item"><label>ชื่อ</label><span>${pt['Patient Name']||pt.patientName||'-'}</span></div>
+        <div class="pt-item"><label>อายุ</label><span>${pt.Age||pt.age||'-'} ปี</span></div>
+        <div class="pt-item"><label>Dx</label><span style="font-size:.8rem">${pt.Diagnosis||pt.diagnosis||'-'}</span></div>
+        <div class="pt-item"><label>สถานะ</label><span class="${(pt.Status||'').includes('จำหน่าย')?'st-dc':'st-active'}">${pt.Status||'กำลังรักษา'}</span></div>
+      </div>
+    </div>`;
+  }
+
+  if(rows.length) {
+    html += `<table><thead><tr><th>วันที่</th><th>Temp</th><th>BP</th><th>PR</th><th>RR</th><th>O2Sat</th><th>Devices</th><th>WBC</th><th>Culture</th><th>Note</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr>
+      <td style="font-family:var(--mono);font-size:.72rem">${fmtDate(r.record_date||r.Timestamp||r.A)}</td>
+      <td style="font-family:var(--mono)">${r.BT||r.bt||'-'}</td>
+      <td style="font-family:var(--mono)">${r.BP||r.bp||'-'}</td>
+      <td style="font-family:var(--mono)">${r.PR||r.pr||'-'}</td>
+      <td style="font-family:var(--mono)">${r.RR||r.rr||'-'}</td>
+      <td style="font-family:var(--mono)">${r['O2 Sat']||r.o2sat||'-'}</td>
+      <td style="color:var(--rose);font-size:.75rem">${[r.device_vent&&'Vent',r.device_fc&&'FC',r.device_cline&&'C-Line',r.device_iv&&'IV'].filter(Boolean).join(',')||'-'}</td>
+      <td>${r.lab_cbc||r['Lab WBC']||'-'}</td>
+      <td style="color:var(--amber);font-size:.75rem">${r.culture_result||'-'}</td>
+      <td style="color:var(--muted);font-size:.75rem;max-width:120px;overflow:hidden;text-overflow:ellipsis">${r.daily_note||r['Daily Note']||'-'}</td>
+    </tr>`).join('')}</tbody></table>`;
+  }
+  el.innerHTML = html;
+}
+
+// ==================== SURVEILLANCE ====================
+function renderSurvKPI() {
+  const d = DB.patient;
+  const total = d.length;
+  const active = d.filter(r=>!(r.Status||r.status||'').toString().includes('จำหน่าย')).length;
+  const withInf = d.filter(r=>(r['Infection Status']||r.infectionStatus||'').toString().includes('มี')).length;
+  const dc = total - active;
+
+  document.getElementById('kpi-surv').innerHTML = `
+    <div class="kpi c1"><div class="kpi-lbl">ผู้ป่วยทั้งหมด</div><div class="kpi-val">${total}</div><div class="kpi-sub">ในระบบ</div></div>
+    <div class="kpi c2"><div class="kpi-lbl">กำลังรักษา</div><div class="kpi-val">${active}</div><div class="kpi-sub">Active cases</div></div>
+    <div class="kpi c3"><div class="kpi-lbl">มีการติดเชื้อ</div><div class="kpi-val">${withInf}</div><div class="kpi-sub">แรกรับ</div></div>
+    <div class="kpi c4"><div class="kpi-lbl">จำหน่ายแล้ว</div><div class="kpi-val">${dc}</div><div class="kpi-sub">ราย</div></div>
+  `;
+}
+
+function renderInfTrend() {
+  const wSel = document.getElementById('sel-ward-inf')?.value||'all';
+  let rows = DB.patient.filter(r=>(r['Infection Status']||r.infectionStatus||'').toString().includes('มี'));
+  if(wSel!=='all') rows = rows.filter(r=>(r.Ward||r.ward||'')=== wSel);
+
+  const grouped = {};
+  rows.forEach(r => {
+    const k = periodKey(r.Timestamp||r['Admit Date']||r.admitDate||'', 'month');
+    grouped[k] = (grouped[k]||0)+1;
+  });
+  const labels = Object.keys(grouped).slice(-12);
+  const data = labels.map(k=>grouped[k]);
+
+  destroyChart('inftrend');
+  CH['inftrend'] = new Chart(document.getElementById('c-inf-trend'), {
+    type:'bar', data:{labels, datasets:[{label:'New Infection',data,backgroundColor:'#f43f5e88',borderColor:'#f43f5e',borderWidth:2,borderRadius:4}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{ticks:{color:'#6b84a8'},grid:{color:'#1a3050'}},x:{ticks:{color:'#e2eaf7',font:{size:10}},grid:{display:false}}}}
+  });
+}
+
+function renderDonut() {
+  const wSel = document.getElementById('sel-ward-donut')?.value||'all';
+  let rows = DB.patient;
+  if(wSel!=='all') rows = rows.filter(r=>(r.Ward||r.ward||'')=== wSel);
+
+  const sysMap = {};
+  rows.forEach(r => {
+    const sys = (r['Infection System']||r.infectionSystem||'').toString();
+    sys.split(',').forEach(s => { s=s.trim(); if(s){ sysMap[s]=(sysMap[s]||0)+1; } });
+  });
+  const entries = Object.entries(sysMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  destroyChart('donut');
+  CH['donut'] = new Chart(document.getElementById('c-donut'), {
+    type:'doughnut', data:{labels:entries.map(e=>e[0].substring(0,18)), datasets:[{data:entries.map(e=>e[1]),backgroundColor:COLORS.map(c=>c+'aa'),borderColor:COLORS,borderWidth:2,hoverOffset:6}]},
+    options:{responsive:true,plugins:{legend:{labels:{color:'#e2eaf7',font:{size:10}}}},cutout:'55%'}
+  });
+}
+
+function renderPatientTable() {
+  const sSel = document.getElementById('sel-status-pt')?.value||'all';
+  const wSel = document.getElementById('sel-ward-pt')?.value||'all';
+  let rows = DB.patient;
+  if(wSel!=='all') rows = rows.filter(r=>(r.Ward||r.ward||'')=== wSel);
+  if(sSel==='active') rows = rows.filter(r=>!(r.Status||'').toString().includes('จำหน่าย'));
+  if(sSel==='dc') rows = rows.filter(r=>(r.Status||'').toString().includes('จำหน่าย'));
+
+  if(!rows.length){ document.getElementById('tbl-pt').innerHTML='<div class="empty">ไม่พบข้อมูล</div>'; return; }
+
+  const html = `<table><thead><tr><th>HN</th><th>AN</th><th>ชื่อ-สกุล</th><th>อายุ</th><th>Ward</th><th>วันรับ</th><th>Dx</th><th>การติดเชื้อ</th><th>สถานะ</th></tr></thead><tbody>
+  ${rows.slice(0,100).map(r=>{
+    const isDC = (r.Status||'').toString().includes('จำหน่าย');
+    const inf = (r['Infection System']||r.infectionSystem||'').toString();
+    const an = r.AN||r.an||'-';
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:.72rem;color:var(--teal)">${r.HN||r.hn||'-'}</td>
+      <td><span style="font-family:var(--mono);font-size:.75rem;cursor:pointer;color:var(--amber);text-decoration:underline" onclick="goSearchAN('${an}')">${an}</span></td>
+      <td style="font-weight:500">${r['Patient Name']||r.patientName||'-'}</td>
+      <td style="text-align:center;color:var(--muted)">${r.Age||r.age||'-'}</td>
+      <td style="color:var(--muted);font-size:.75rem">${r.Ward||r.ward||'-'}</td>
+      <td style="font-family:var(--mono);font-size:.72rem;color:var(--muted)">${fmtDate(r['Admit Date']||r.admitDate)}</td>
+      <td style="color:var(--muted);font-size:.75rem;max-width:160px;overflow:hidden;text-overflow:ellipsis">${r.Diagnosis||r.diagnosis||'-'}</td>
+      <td style="max-width:160px">${inf?inf.split(',').map(s=>`<span style="background:rgba(244,63,94,.1);color:#fb7185;border:1px solid rgba(244,63,94,.2);border-radius:4px;padding:1px 5px;font-size:.65rem;display:inline-block;margin:1px">${s.trim().substring(0,16)}</span>`).join(''):'<span style="color:var(--muted)">ไม่มี</span>'}</td>
+      <td><span class="${isDC?'st-dc':'st-active'}">${isDC?'จำหน่าย':'กำลังรักษา'}</span></td>
+    </tr>`;
+  }).join('')}</tbody></table>`;
+  document.getElementById('tbl-pt').innerHTML = html;
+}
+
+function goSearchAN(an) {
+  sw('icn');
+  document.getElementById('an-input').value = an;
+  searchAN();
+  document.getElementById('an-input').scrollIntoView({behavior:'smooth'});
+}
+
+// auto refresh 5 min
+loadAll();
+setInterval(loadAll, 5*60*1000);
+</script>
+</body>
+</html>
