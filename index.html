@@ -191,6 +191,16 @@ tr:hover td{background:rgba(0,201,167,.04)}
     <div class="chart-wrap"><canvas id="c-trend" height="140"></canvas></div>
   </div>
 
+  <div class="card" style="margin-bottom:16px; border: 1px solid rgba(244,63,94,0.3); background: rgba(244,63,94,0.02);">
+    <div class="card-title" style="margin-bottom:8px; color: var(--rose);">
+      <span class="dot" style="background:var(--rose); box-shadow: 0 0 8px var(--rose);"></span>🚨 Pending Today (หน่วยงานที่ยังไม่ประเมินวันนี้)
+    </div>
+    <div class="card-sub" style="margin-bottom:14px; color: rgba(226,234,247,0.7);">รีบหน่อย! ตึกเหล่านี้ยังไม่มีประวัติส่งข้อมูล Bundle เข้ามาในระบบของวันนี้เลยนะ</div>
+    <div id="pending-wards-list" style="display: flex; flex-wrap: wrap; gap: 8px;">
+      <div class="loading" style="padding: 10px;"><div class="spin" style="width:16px;height:16px;border-width:2px;"></div></div>
+    </div>
+  </div>
+
   <div class="grid2">
     <div class="card">
       <div class="card-hdr">
@@ -342,6 +352,17 @@ let DB = { bundle:[], daily:[], patient:[] };
 let CH = {};
 const COLORS = ['#00c9a7','#3b82f6','#f59e0b','#f43f5e','#a855f7','#22c55e','#fb923c','#e879f9','#38bdf8','#4ade80'];
 
+// Master List ทุกตึกของมุกดาหาร
+const ALL_MDH_WARDS = [
+  "อายุรกรรมชาย1", "อายุรกรรมหญิง1", "ศัลยกรรมชาย", "ศัลยกรรมหญิง", "ตา หู คอ จมูก", 
+  "พิเศษ2", "พิเศษ3", "พิเศษ4", "MICU1", "กุมารเวชกรรม", "ทารกแรกเกิดป่วย", 
+  "ศัลยกรรมออร์โธปิดิกส์", "ห้องคลอด", "สูติกรรมหลังคลอด", "พิเศษ9", "PICU", 
+  "SICU", "CCU", "มะเร็งและเคมีบำบัด", "อายุรกรรมชาย2", "อายุรกรรมหญิง2", 
+  "MICU2", "พิเศษ14 สงฆ์อาพาธ", "ศัลยกรรมทั่วไป", "พิเศษ 12", "พิเศษ 13", 
+  "โรคหลอดเลือดสมอง", "หอผู้ป่วยจิตเวช", "ห้องผ่าตัด", "วิสัญญี", 
+  "อุบัติเหตุฉุกเฉิน", "OPD ชั้น 1", "OPD ชั้น 2", "การพยาบาลชุมชน", "งานเวชกรรมสังคม"
+];
+
 // ===== FETCH =====
 async function fetchSheet(sheet) {
   try {
@@ -367,24 +388,18 @@ async function loadAll() {
   renderAll();
 }
 
-// 🪄 วุ้นแปลภาษา + ตัวแก้บั๊กวันที่ภาษาไทย
 function safeDate(v) {
   if (!v) return new Date();
   if (v instanceof Date) return v;
   let str = String(v).trim();
-  
-  // กันเหนียว: เผื่อวันไหนข้อมูลมาเป็นตัวเลข Excel (เช่น 46075)
-  if (/^\\d{5}$/.test(str)) {
-     return new Date((Number(str) - 25569) * 86400 * 1000);
-  }
-  
-  if (str.includes('/')) { // แก้บั๊กวันที่รูปแบบ DD/MM/YYYY
-    let parts = str.split(/[\\s,T]+/)[0].split('/');
+  if (/^\d{5}$/.test(str)) return new Date((Number(str) - 25569) * 86400 * 1000);
+  if (str.includes('/')) { 
+    let parts = str.split(/[\s,T]+/)[0].split('/');
     if (parts.length === 3) {
       let d = parseInt(parts[0], 10);
       let m = parseInt(parts[1], 10) - 1;
       let y = parseInt(parts[2], 10);
-      if (y > 2500) y -= 543; // แปลง พ.ศ. เป็น ค.ศ.
+      if (y > 2500) y -= 543;
       else if (y < 100) y += 2000;
       let pDate = new Date(y, m, d);
       if (!isNaN(pDate)) return pDate;
@@ -466,7 +481,6 @@ function getPeriodInfo(dateObj, period) {
   return { sortKey, label };
 }
 
-// ===== POPULATE DROPDOWNS =====
 function populateDropdowns() {
   const wards = [...new Set([...DB.bundle.map(r=>r.ward), ...DB.daily.map(r=>r.ward), ...DB.patient.map(r=>r.ward)])].filter(Boolean).sort();
   ['sel-ward-b','sel-ward-pos','sel-ward-dc','sel-ward-dct','sel-ward-inf','sel-ward-donut','sel-ward-pt','sel-ward-bundlecomp'].forEach(id => {
@@ -481,7 +495,6 @@ function populateDropdowns() {
   if(wc) { const c=wc.value; wc.innerHTML='<option value="all">ทุก Bundle</option><option value="VAP">VAP</option><option value="CAUTI">CAUTI</option><option value="CLABSI">CLABSI</option><option value="SSI">SSI</option><option value="เชื้อดื้อยา">MDR</option><option value="HAND HYGIENE">Hand Hygiene</option>'; if(c) wc.value=c; }
 }
 
-// ===== UTILS =====
 function pct(y, n) { return (y+n)>0 ? Math.round(y/(y+n)*100) : null; }
 function pctColor(p) { return p>=80?'#22c55e':p>=60?'#f59e0b':'#f43f5e'; }
 function fmtDate(v) { return !v ? '-' : safeDate(v).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}); }
@@ -505,9 +518,33 @@ function sw(tab) {
 }
 
 function renderAll() {
-  renderBundleKPI(); renderBundleTrend(); renderWardComp(); renderPositionChart(); renderBundleTable();
+  renderBundleKPI(); renderPendingWards(); renderBundleTrend(); renderWardComp(); renderPositionChart(); renderBundleTable();
   renderICNKPI(); renderDCTrend(); renderDeviceChart(); renderDCTable();
   renderSurvKPI(); renderInfTrend(); renderDonut(); renderPatientTable();
+}
+
+// ==================== PENDING WARDS ALERT ====================
+function renderPendingWards() {
+  const todayStr = new Date().toDateString();
+  
+  // หาตึกที่ประเมินแล้วในวันนี้
+  const assessedToday = new Set(
+    DB.bundle
+      .filter(r => safeDate(r.timestamp).toDateString() === todayStr)
+      .map(r => r.ward)
+  );
+
+  // คัดกรองหาตึกที่ "หายไป"
+  const missingWards = ALL_MDH_WARDS.filter(w => !assessedToday.has(w));
+  
+  const container = document.getElementById('pending-wards-list');
+  if (missingWards.length === 0) {
+    container.innerHTML = `<span style="color: var(--green); font-size: 0.9rem; font-weight: 600;"><i class="fa-solid fa-check-circle"></i> 🎉 ยอดเยี่ยม! ทุกหน่วยงานส่งข้อมูลประเมินครบแล้วสำหรับวันนี้</span>`;
+  } else {
+    container.innerHTML = missingWards.map(w => 
+      `<span style="background: rgba(244,63,94,0.15); color: #fb7185; border: 1px solid rgba(244,63,94,0.4); padding: 5px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 500;">${w}</span>`
+    ).join('');
+  }
 }
 
 // ==================== BUNDLE ====================
@@ -530,7 +567,7 @@ function renderBundleKPI() {
 function renderBundleTrend() {
   const bSel = document.getElementById('sel-bundle')?.value||'all';
   const wSel = document.getElementById('sel-ward-b')?.value||'all';
-  const period = document.getElementById('sel-period-b')?.value||'week'; // ค่าเริ่มต้นเป็นรายสัปดาห์
+  const period = document.getElementById('sel-period-b')?.value||'week';
 
   let rows = DB.bundle;
   if(bSel!=='all') rows = rows.filter(r=>r.bundleType===bSel.toUpperCase());
@@ -561,7 +598,7 @@ function renderBundleTrend() {
       label: w, data: data,
       borderColor: COLORS[i % COLORS.length],
       backgroundColor: 'transparent',
-      tension: 0.35, /* ปรับให้โค้งสมูทเหมือนกราฟหุ้น */
+      tension: 0.35, 
       borderWidth: 3,
       pointRadius: 4
     };
@@ -622,7 +659,7 @@ function renderBundleTable() {
       <td style="color:var(--muted);font-family:var(--mono);font-size:.72rem">${fmtDate(r.timestamp)}</td>
       <td>${r.ward||'-'}</td>
       <td style="color:var(--muted)">${r.position||'-'}</td>
-      <td><span class="badge b-${bt.replace(/\\s+/g,'')}">${bt.toUpperCase()||'-'}</span></td>
+      <td><span class="badge b-${bt.replace(/\s+/g,'')}">${bt.toUpperCase()||'-'}</span></td>
       <td>${p!=null?`<div class="pct-bar"><div class="pct-track"><div class="pct-fill" style="width:${p}%;background:${c}"></div></div><span style="color:${c};font-family:var(--mono);font-size:.78rem;font-weight:600">${p}%</span></div>`:'-'}</td>
     </tr>`;
   }).join('')}</tbody></table>`;
