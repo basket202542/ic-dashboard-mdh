@@ -181,9 +181,10 @@ tr:hover td{background:rgba(0,201,167,.04)}
         </select>
         <select class="mini" id="sel-ward-b" onchange="renderBundleTrend()"><option value="all">ทุก Ward</option></select>
         <select class="mini" id="sel-period-b" onchange="renderBundleTrend()">
-          <option value="month">รายเดือน</option>
-          <option value="week">รายสัปดาห์</option>
           <option value="day">รายวัน</option>
+          <option value="week">รายสัปดาห์</option>
+          <option value="month" selected>รายเดือน</option>
+          <option value="year">รายปี</option>
         </select>
       </div>
     </div>
@@ -245,9 +246,10 @@ tr:hover td{background:rgba(0,201,167,.04)}
         <div class="ctrl">
           <select class="mini" id="sel-ward-dc" onchange="renderDCTrend()"><option value="all">ทุก Ward</option></select>
           <select class="mini" id="sel-period-dc" onchange="renderDCTrend()">
-            <option value="month">รายเดือน</option>
-            <option value="week">รายสัปดาห์</option>
             <option value="day">รายวัน</option>
+            <option value="week">รายสัปดาห์</option>
+            <option value="month" selected>รายเดือน</option>
+            <option value="year">รายปี</option>
           </select>
         </div>
       </div>
@@ -338,6 +340,7 @@ tr:hover td{background:rgba(0,201,167,.04)}
 const API = 'https://script.google.com/macros/s/AKfycbwYYomUMt7OcyNy5mfpLSbGH-UG3oSq2nIXLrQllaXjv83oBEfWQWeIwOIptbNaF4dgEQ/exec';
 let DB = { bundle:[], daily:[], patient:[] };
 let CH = {};
+const COLORS = ['#00c9a7','#3b82f6','#f59e0b','#f43f5e','#a855f7','#22c55e','#fb923c','#e879f9','#38bdf8','#4ade80'];
 
 // ===== FETCH =====
 async function fetchSheet(sheet) {
@@ -357,7 +360,6 @@ async function loadAll() {
   ]);
   DB.bundle = b; DB.daily = d; DB.patient = p;
   
-  // 🚀 เปิดใช้วุ้นแปลภาษา (Data Normalizer) แก้ปัญหากราฟเป็น 0
   normalizeData();
 
   document.getElementById('upd').textContent = 'อัปเดต: ' + new Date().toLocaleTimeString('th-TH');
@@ -365,29 +367,46 @@ async function loadAll() {
   renderAll();
 }
 
-// 🪄 วุ้นแปลภาษา: จับคู่หัวตารางภาษาไทย ให้เข้ากับตัวแปร Dashboard
+// 🪄 วุ้นแปลภาษา + ตัวแก้บั๊กวันที่ภาษาไทย
+function safeDate(v) {
+  if (!v) return new Date();
+  if (v instanceof Date) return v;
+  let str = String(v).trim();
+  if (str.includes('/')) { // แก้บั๊กวันที่รูปแบบ DD/MM/YYYY
+    let parts = str.split(/[\s,T]+/)[0].split('/');
+    if (parts.length === 3) {
+      let d = parseInt(parts[0], 10);
+      let m = parseInt(parts[1], 10) - 1;
+      let y = parseInt(parts[2], 10);
+      if (y > 2500) y -= 543; // แปลง พ.ศ. เป็น ค.ศ.
+      else if (y < 100) y += 2000;
+      let pDate = new Date(y, m, d);
+      if (!isNaN(pDate)) return pDate;
+    }
+  }
+  let fallback = new Date(str);
+  return isNaN(fallback) ? new Date() : fallback;
+}
+
 function normalizeData() {
-  // 1. แปลง Patient Profile
   DB.patient.forEach(r => {
     r.hn = String(r['HN'] || r.hn || '').trim();
     r.an = String(r['AN'] || r.an || '').trim();
     r.patientName = r['Patient Name'] || r['ชื่อ-สกุล'] || r.patientName || '';
     r.age = r['Age'] || r['อายุ'] || r.age || '';
     r.diagnosis = r['Diagnosis'] || r['การวินิจฉัย'] || r.diagnosis || '';
-    r.admitDate = r['Admit Date'] || r['วันที่รับไว้'] || r.Timestamp || r.timestamp || '';
+    r.admitDate = safeDate(r['Admit Date'] || r['วันที่รับไว้'] || r.Timestamp || r.timestamp);
     r.infectionStatus = r['Infection Status'] || r['มีการติดเชื้อ'] || r.infectionStatus || '';
     r.infectionSystem = r['Infection System'] || r['ระบบที่ติดเชื้อ'] || r.infectionSystem || '';
     r.status = r['Status'] || r['สถานะ'] || r.status || 'กำลังรักษา';
   });
 
-  // 2. แปลง Daily Cues
   DB.daily.forEach(r => {
     r.hn = String(r['HN'] || r.hn || '').trim();
     let pt = DB.patient.find(p => p.hn === r.hn);
     r.an = pt ? pt.an : (r['AN'] || r.an || '');
-    
     r.ward = r['หน่วยงาน'] || r['Ward'] || r.ward || '';
-    r.record_date = r['วันที่ประเมิน'] || r['Timestamp'] || r.record_date || '';
+    r.record_date = safeDate(r['วันที่ประเมิน'] || r['Timestamp'] || r.record_date);
     r.bt = r['Temp'] || r.bt || '';
     r.bp = r['BP'] || r.bp || '';
     r.pr = r['PR'] || r.pr || '';
@@ -396,13 +415,10 @@ function normalizeData() {
     
     let vent = String(r['เครื่องช่วยหายใจ'] || r.device_vent || '').toLowerCase();
     r.device_vent = vent.includes('on') || vent === 'true';
-    
     let fc = String(r['สายสวนปัสสาวะ'] || r.device_fc || '').toLowerCase();
     r.device_fc = fc.includes('on') || fc === 'true';
-    
     let cline = String(r['Central Line'] || r.device_cline || '').toLowerCase();
     r.device_cline = cline.includes('on') || cline === 'true';
-    
     let iv = String(r['สายน้ำเกลือ'] || r.device_iv || '').toLowerCase();
     r.device_iv = iv.includes('on') || iv === 'true';
     
@@ -411,29 +427,42 @@ function normalizeData() {
     r.daily_note = r['Note อาการเพิ่มเติม'] || r.daily_note || '';
   });
 
-  // 3. เชื่อม Ward ให้ Patient (ดึงจาก Daily Cues ล่าสุด)
   DB.patient.forEach(p => {
     let cues = DB.daily.filter(d => d.hn === p.hn);
     p.ward = cues.length > 0 ? cues[cues.length - 1].ward : 'ไม่ระบุ';
   });
 
-  // 4. แปลง Bundle Log
   DB.bundle.forEach(r => {
-    r.timestamp = r['Timestamp'] || r.Timestamp || '';
+    r.timestamp = safeDate(r['Timestamp'] || r.Timestamp);
     r.ward = r['Ward'] || r['หน่วยงาน'] || r.ward || '';
     r.position = r['Position'] || r['ตำแหน่ง'] || r.position || '';
     r.bundleType = String(r['Bundle_Type'] || r.bundleType || '').toUpperCase();
   });
 }
 
+function getPeriodInfo(dateObj, period) {
+  const d = new Date(dateObj);
+  let sortKey = '', label = '';
+  if(period === 'day') {
+    sortKey = d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
+    label = d.toLocaleDateString('th-TH',{day:'numeric',month:'short'});
+  } else if(period === 'week') {
+    const w = new Date(d); w.setDate(d.getDate()-d.getDay());
+    sortKey = w.getFullYear() + String(w.getMonth()+1).padStart(2,'0') + String(w.getDate()).padStart(2,'0');
+    label = 'สัปดาห์ ' + w.toLocaleDateString('th-TH',{day:'numeric',month:'short'});
+  } else if(period === 'year') {
+    sortKey = d.getFullYear().toString();
+    label = (d.getFullYear() + 543).toString();
+  } else { // month
+    sortKey = d.getFullYear() + String(d.getMonth()+1).padStart(2,'0');
+    label = d.toLocaleDateString('th-TH',{month:'short', year:'2-digit'});
+  }
+  return { sortKey, label };
+}
+
 // ===== POPULATE DROPDOWNS =====
 function populateDropdowns() {
-  const wards = [...new Set([
-    ...DB.bundle.map(r => r.ward),
-    ...DB.daily.map(r => r.ward),
-    ...DB.patient.map(r => r.ward)
-  ])].filter(Boolean).sort();
-
+  const wards = [...new Set([...DB.bundle.map(r=>r.ward), ...DB.daily.map(r=>r.ward), ...DB.patient.map(r=>r.ward)])].filter(Boolean).sort();
   ['sel-ward-b','sel-ward-pos','sel-ward-dc','sel-ward-dct','sel-ward-inf','sel-ward-donut','sel-ward-pt','sel-ward-bundlecomp'].forEach(id => {
     const el = document.getElementById(id);
     if(!el) return;
@@ -449,47 +478,26 @@ function populateDropdowns() {
 // ===== UTILS =====
 function pct(y, n) { return (y+n)>0 ? Math.round(y/(y+n)*100) : null; }
 function pctColor(p) { return p>=80?'#22c55e':p>=60?'#f59e0b':'#f43f5e'; }
-function fmtDate(v) {
-  if(!v) return '-';
-  const d = new Date(v);
-  return isNaN(d) ? v : d.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'});
-}
-function groupBy(arr, key) {
-  return arr.reduce((a,r) => { const k=r[key]||'?'; (a[k]=a[k]||[]).push(r); return a; }, {});
-}
-function periodKey(dateStr, period) {
-  const d = new Date(dateStr);
-  if(isNaN(d)) return '?';
-  if(period==='day') return d.toLocaleDateString('th-TH',{day:'numeric',month:'short'});
-  if(period==='week') {
-    const w = new Date(d); w.setDate(d.getDate()-d.getDay());
-    return w.toLocaleDateString('th-TH',{day:'numeric',month:'short'});
-  }
-  return d.toLocaleDateString('th-TH',{month:'short',year:'2-digit'});
-}
+function fmtDate(v) { return !v ? '-' : safeDate(v).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}); }
+function groupBy(arr, key) { return arr.reduce((a,r) => { const k=r[key]||'?'; (a[k]=a[k]||[]).push(r); return a; }, {}); }
 function calcCompliance(rows) {
   let y=0,n=0;
   rows.forEach(r => {
     for(let i=1;i<=16;i++) {
       const v=(r[`Q${i}`]||r['q'+i]||'').toString().trim().toUpperCase();
-      if(v==='Y'||v==='ทำ/ใช่') y++;
-      else if(v==='N'||v==='ไม่ทำ') n++;
+      if(v==='Y'||v==='ทำ/ใช่') y++; else if(v==='N'||v==='ไม่ทำ') n++;
     }
   });
   return {y,n,pct:pct(y,n)};
 }
-function getBundleType(r) { return r.bundleType; }
 function destroyChart(id) { if(CH[id]){CH[id].destroy();delete CH[id];} }
-const COLORS = ['#00c9a7','#3b82f6','#f59e0b','#f43f5e','#a855f7','#22c55e','#fb923c','#e879f9','#38bdf8','#4ade80'];
 
-// ===== TAB SWITCH =====
 function sw(tab) {
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['bundle','icn','surv'][i]===tab));
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+tab).classList.add('active');
 }
 
-// ===== RENDER ALL =====
 function renderAll() {
   renderBundleKPI(); renderBundleTrend(); renderWardComp(); renderPositionChart(); renderBundleTable();
   renderICNKPI(); renderDCTrend(); renderDeviceChart(); renderDCTable();
@@ -499,15 +507,14 @@ function renderAll() {
 // ==================== BUNDLE ====================
 function renderBundleKPI() {
   const d = DB.bundle;
-  const total = d.length;
   const {y,n,pct:op} = calcCompliance(d);
   const wards = new Set(d.map(r=>r.ward).filter(Boolean)).size;
   const types = new Set(d.map(r=>r.bundleType).filter(Boolean)).size;
-  const today = d.filter(r=>{ const dd=new Date(r.timestamp); return dd.toDateString()===new Date().toDateString(); }).length;
+  const today = d.filter(r=> safeDate(r.timestamp).toDateString()===new Date().toDateString() ).length;
 
   document.getElementById('kpi-bundle').innerHTML = `
     <div class="kpi c1"><div class="kpi-lbl">🎯 Overall Compliance</div><div class="kpi-val">${op??'-'}%</div><div class="kpi-sub">Y/(Y+N) ทุก Bundle</div></div>
-    <div class="kpi c2"><div class="kpi-lbl">📋 การประเมินทั้งหมด</div><div class="kpi-val">${total}</div><div class="kpi-sub">ครั้ง</div></div>
+    <div class="kpi c2"><div class="kpi-lbl">📋 การประเมินทั้งหมด</div><div class="kpi-val">${d.length}</div><div class="kpi-sub">ครั้ง</div></div>
     <div class="kpi c3"><div class="kpi-lbl">⚡ ประเมินวันนี้</div><div class="kpi-val">${today}</div><div class="kpi-sub">ครั้ง</div></div>
     <div class="kpi c4"><div class="kpi-lbl">🧩 ประเภท Bundle</div><div class="kpi-val">${types}</div><div class="kpi-sub">ประเภท</div></div>
     <div class="kpi c5"><div class="kpi-lbl">🏨 Ward ที่ประเมิน</div><div class="kpi-val">${wards}</div><div class="kpi-sub">หน่วยงาน</div></div>
@@ -520,59 +527,48 @@ function renderBundleTrend() {
   const period = document.getElementById('sel-period-b')?.value||'month';
 
   let rows = DB.bundle;
-  // กรองตามประเภท Bundle
   if(bSel!=='all') rows = rows.filter(r=>r.bundleType===bSel.toUpperCase());
 
-  // หา Ward ที่จะเอามาลงกราฟวิ่งแข่งกัน
   let allWards = [];
   if (wSel === 'all') {
-    // ถ้าดูภาพรวม ให้ดึงแค่ Top 6 ตึกที่ยอดประเมินเยอะสุดมาแข่งกัน กราฟจะได้ไม่รก
     const wardCounts = groupBy(rows, 'ward');
-    allWards = Object.keys(wardCounts)
-      .filter(w => w && w !== 'undefined')
-      .sort((a, b) => wardCounts[b].length - wardCounts[a].length)
-      .slice(0, 6);
+    allWards = Object.keys(wardCounts).filter(w => w && w !== 'undefined').sort((a, b) => wardCounts[b].length - wardCounts[a].length).slice(0, 6);
   } else {
-    // ถ้าเลือกดูเฉพาะตึก ก็โชว์แค่ตึกนั้น
     allWards = [wSel];
     rows = rows.filter(r => r.ward === wSel);
   }
 
-  // หาแกน X (ช่วงเวลาตามที่เลือก: วัน/สัปดาห์/เดือน)
-  const periodSet = new Set();
-  rows.forEach(r => periodSet.add(periodKey(r.timestamp, period)));
-  const labels = [...periodSet].slice(-15); // โชว์ 15 ช่วงเวลาย้อนหลัง
+  const timeMap = new Map();
+  rows.forEach(r => {
+     const info = getPeriodInfo(r.timestamp, period);
+     timeMap.set(info.sortKey, info.label);
+  });
+  const sortedKeys = Array.from(timeMap.keys()).sort().slice(-20); // ดึง 20 แกนเวลาล่าสุดมาเรียง
+  const labels = sortedKeys.map(k => timeMap.get(k));
 
-  // สร้างเส้นกราฟแข่งกันแต่ละตึก
   const datasets = allWards.map((w, i) => {
-    const wr = DB.bundle.filter(r => r.ward === w && (bSel === 'all' || r.bundleType === bSel.toUpperCase()));
-    const data = labels.map(lbl => wr.filter(r => periodKey(r.timestamp, period) === lbl).length);
+    const wr = rows.filter(r => r.ward === w);
+    const data = sortedKeys.map(key => {
+       return wr.filter(r => getPeriodInfo(r.timestamp, period).sortKey === key).length;
+    });
     return {
-      label: w,
-      data: data,
+      label: w, data: data,
       borderColor: COLORS[i % COLORS.length],
       backgroundColor: 'transparent',
-      tension: 0.4,
-      borderWidth: 2.5,
+      tension: 0.3, // ทำให้กราฟเป็นเส้นโค้งสมูทเหมือนหุ้น
+      borderWidth: 3,
       pointRadius: 4
     };
   });
 
   destroyChart('trend');
   CH['trend'] = new Chart(document.getElementById('c-trend'), {
-    type: 'line',
-    data: { labels, datasets },
+    type: 'line', data: { labels, datasets },
     options: {
       responsive: true,
-      plugins: { 
-        legend: { display: true, position: 'top', labels: { color: '#e2eaf7', font: { size: 11, family: 'Sarabun' } } } 
-      },
+      plugins: { legend: { display: true, position: 'top', labels: { color: '#e2eaf7', font: { size: 11, family: 'IBM Plex Sans Thai' } } } },
       scales: {
-        y: { 
-          min: 0, 
-          ticks: { color: '#6b84a8', stepSize: 1 }, // ให้แกน Y นับทีละ 1 
-          grid: { color: '#1a3050' } 
-        },
+        y: { min: 0, ticks: { color: '#6b84a8', stepSize: 1 }, grid: { color: '#1a3050' } },
         x: { ticks: { color: '#e2eaf7', font: { size: 10 } }, grid: { display: false } }
       }
     }
@@ -583,18 +579,14 @@ function renderWardComp() {
   const bSel = document.getElementById('sel-bundle-ward')?.value||'all';
   let rows = DB.bundle;
   if(bSel!=='all') rows = rows.filter(r=>r.bundleType===bSel.toUpperCase());
-
   const wardMap = groupBy(rows, 'ward');
   const labels = Object.keys(wardMap).slice(0,15);
   const data = labels.map(w => calcCompliance(wardMap[w]).pct??0);
   const colors = data.map(p=>pctColor(p));
-
   destroyChart('ward');
   CH['ward'] = new Chart(document.getElementById('c-ward'), {
     type:'bar', data:{labels, datasets:[{label:'Compliance %',data,backgroundColor:colors.map(c=>c+'99'),borderColor:colors,borderWidth:2,borderRadius:5}]},
-    options:{responsive:true,indexAxis:'y',plugins:{legend:{display:false}},
-      scales:{x:{min:0,max:100,ticks:{color:'#6b84a8',callback:v=>v+'%'},grid:{color:'#1a3050'}},
-              y:{ticks:{color:'#e2eaf7',font:{size:10}},grid:{display:false}}}}
+    options:{responsive:true,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{min:0,max:100,ticks:{color:'#6b84a8',callback:v=>v+'%'},grid:{color:'#1a3050'}},y:{ticks:{color:'#e2eaf7',font:{size:10}},grid:{display:false}}}}
   });
 }
 
@@ -602,11 +594,9 @@ function renderPositionChart() {
   const wSel = document.getElementById('sel-ward-pos')?.value||'all';
   let rows = DB.bundle;
   if(wSel!=='all') rows = rows.filter(r=>r.ward===wSel);
-
   const posMap = groupBy(rows, 'position');
   const labels = Object.keys(posMap);
   const data = labels.map(p=>posMap[p].length);
-
   destroyChart('pos');
   CH['pos'] = new Chart(document.getElementById('c-pos'), {
     type:'doughnut', data:{labels, datasets:[{data, backgroundColor:COLORS.map(c=>c+'cc'), borderColor:COLORS, borderWidth:2, hoverOffset:6}]},
@@ -636,7 +626,7 @@ function renderBundleTable() {
 // ==================== ICN COMMAND ====================
 function renderICNKPI() {
   const d = DB.daily;
-  const today = d.filter(r=>{ const dd=new Date(r.record_date); return dd.toDateString()===new Date().toDateString(); }).length;
+  const today = d.filter(r=> safeDate(r.record_date).toDateString()===new Date().toDateString() ).length;
   const wards = new Set(d.map(r=>r.ward).filter(Boolean)).size;
   const onVent = d.filter(r=>r.device_vent).length;
 
@@ -657,21 +647,26 @@ function renderDCTrend() {
   const wardRows = wSel==='all' ? DB.daily : rows;
   const allWards = wSel==='all' ? [...new Set(DB.daily.map(r=>r.ward).filter(Boolean))].slice(0,6) : [wSel];
 
-  const periodSet = new Set();
-  wardRows.forEach(r => periodSet.add(periodKey(r.record_date, period)));
-  const labels = [...periodSet].slice(-16);
+  const timeMap = new Map();
+  wardRows.forEach(r => {
+     const info = getPeriodInfo(r.record_date, period);
+     timeMap.set(info.sortKey, info.label);
+  });
+  const sortedKeys = Array.from(timeMap.keys()).sort().slice(-20);
+  const labels = sortedKeys.map(k => timeMap.get(k));
 
   const datasets = allWards.map((w,i) => {
     const wr = DB.daily.filter(r=>r.ward===w);
-    const data = labels.map(lbl => wr.filter(r=>periodKey(r.record_date,period)===lbl).length);
-    return {label:w, data, borderColor:COLORS[i%COLORS.length], backgroundColor:'transparent', tension:.4, borderWidth:2, pointRadius:3};
+    const data = sortedKeys.map(key => {
+       return wr.filter(r => getPeriodInfo(r.record_date, period).sortKey === key).length;
+    });
+    return {label:w, data, borderColor:COLORS[i%COLORS.length], backgroundColor:'transparent', tension:0.3, borderWidth:2.5, pointRadius:4};
   });
 
   destroyChart('dctrend');
   CH['dctrend'] = new Chart(document.getElementById('c-dc-trend'), {
     type:'line', data:{labels, datasets},
-    options:{responsive:true,plugins:{legend:{labels:{color:'#e2eaf7',font:{size:10}}}},
-      scales:{y:{ticks:{color:'#6b84a8'},grid:{color:'#1a3050'}},x:{ticks:{color:'#e2eaf7',font:{size:10}},grid:{display:false}}}}
+    options:{responsive:true,plugins:{legend:{labels:{color:'#e2eaf7',font:{size:11}}}},scales:{y:{ticks:{color:'#6b84a8',stepSize:1},grid:{color:'#1a3050'}},x:{ticks:{color:'#e2eaf7',font:{size:10}},grid:{display:false}}}}
   });
 }
 
@@ -774,13 +769,16 @@ function renderInfTrend() {
   let rows = DB.patient.filter(r=>(r.infectionStatus||'').includes('มี'));
   if(wSel!=='all') rows = rows.filter(r=>r.ward===wSel);
 
+  const timeMap = new Map();
   const grouped = {};
   rows.forEach(r => {
-    const k = periodKey(r.admitDate, 'month');
-    grouped[k] = (grouped[k]||0)+1;
+    const info = getPeriodInfo(r.admitDate, 'month');
+    timeMap.set(info.sortKey, info.label);
+    grouped[info.sortKey] = (grouped[info.sortKey]||0)+1;
   });
-  const labels = Object.keys(grouped).slice(-12);
-  const data = labels.map(k=>grouped[k]);
+  const sortedKeys = Array.from(timeMap.keys()).sort().slice(-12);
+  const labels = sortedKeys.map(k => timeMap.get(k));
+  const data = sortedKeys.map(k => grouped[k] || 0);
 
   destroyChart('inftrend');
   CH['inftrend'] = new Chart(document.getElementById('c-inf-trend'), {
