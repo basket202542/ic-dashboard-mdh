@@ -156,7 +156,6 @@ tr:hover td{background:rgba(0,201,167,.04)}
   <button class="tab" onclick="sw('surv')">🏥 Surveillance</button>
 </div>
 
-<!-- =================== BUNDLE =================== -->
 <div class="page active" id="page-bundle">
   <div class="sec-hdr teal">
     <div class="sec-hdr-icon">📊</div>
@@ -167,12 +166,11 @@ tr:hover td{background:rgba(0,201,167,.04)}
   </div>
   <div class="kpi-grid" id="kpi-bundle"><div class="loading"><div class="spin"></div></div></div>
 
-  <!-- Compliance Trend -->
   <div class="card" style="margin-bottom:16px">
     <div class="card-hdr">
       <div>
-        <div class="card-title"><span class="dot" style="background:var(--teal)"></span>📈 Compliance Rate Trend (%)</div>
-        <div class="card-sub">กรอง Bundle / Ward ได้ — คำนวณ Y/(Y+N) ไม่นับ N/A</div>
+        <div class="card-title"><span class="dot" style="background:var(--teal)"></span>🏆 Bundle Assessment Race (แข่งขันยอดประเมิน)</div>
+        <div class="card-sub">กราฟเปรียบเทียบจำนวนการประเมินแยกตาม Ward (ตึกไหนประเมินเยอะสุดรับรางวัล!)</div>
       </div>
       <div class="ctrl">
         <select class="mini" id="sel-bundle" onchange="renderBundleTrend()">
@@ -193,7 +191,6 @@ tr:hover td{background:rgba(0,201,167,.04)}
   </div>
 
   <div class="grid2">
-    <!-- Ward Comparison -->
     <div class="card">
       <div class="card-hdr">
         <div>
@@ -210,7 +207,6 @@ tr:hover td{background:rgba(0,201,167,.04)}
       <div class="chart-wrap"><canvas id="c-ward" height="200"></canvas></div>
     </div>
 
-    <!-- Position Analytics -->
     <div class="card">
       <div class="card-hdr">
         <div>
@@ -223,14 +219,12 @@ tr:hover td{background:rgba(0,201,167,.04)}
     </div>
   </div>
 
-  <!-- Raw table -->
   <div class="card">
     <div class="card-title" style="margin-bottom:12px"><span class="dot" style="background:var(--green)"></span>📋 ประวัติการประเมินล่าสุด (50 รายการ)</div>
     <div class="tbl-wrap" id="tbl-bundle"><div class="loading"><div class="spin"></div></div></div>
   </div>
 </div>
 
-<!-- =================== ICN COMMAND =================== -->
 <div class="page" id="page-icn">
   <div class="sec-hdr amber">
     <div class="sec-hdr-icon">🎯</div>
@@ -242,7 +236,6 @@ tr:hover td{background:rgba(0,201,167,.04)}
   <div class="kpi-grid" id="kpi-icn"><div class="loading"><div class="spin"></div></div></div>
 
   <div class="grid2">
-    <!-- Daily Cues Trend -->
     <div class="card">
       <div class="card-hdr">
         <div>
@@ -261,7 +254,6 @@ tr:hover td{background:rgba(0,201,167,.04)}
       <div class="chart-wrap"><canvas id="c-dc-trend" height="200"></canvas></div>
     </div>
 
-    <!-- Device Utilization -->
     <div class="card">
       <div class="card-hdr">
         <div>
@@ -273,7 +265,6 @@ tr:hover td{background:rgba(0,201,167,.04)}
     </div>
   </div>
 
-  <!-- AN Search -->
   <div class="card" style="margin-bottom:16px">
     <div class="card-title" style="margin-bottom:12px"><span class="dot" style="background:var(--amber)"></span>🔍 AN Search — ค้นหา Daily Cues รายผู้ป่วย</div>
     <div class="ctrl" style="margin-bottom:14px">
@@ -283,7 +274,6 @@ tr:hover td{background:rgba(0,201,167,.04)}
     <div id="an-result"></div>
   </div>
 
-  <!-- Daily Cues timeline table -->
   <div class="card">
     <div class="card-title" style="margin-bottom:12px"><span class="dot" style="background:var(--blue)"></span>🗓️ Daily Cues Timeline</div>
     <div class="ctrl" style="margin-bottom:12px">
@@ -293,7 +283,6 @@ tr:hover td{background:rgba(0,201,167,.04)}
   </div>
 </div>
 
-<!-- =================== SURVEILLANCE =================== -->
 <div class="page" id="page-surv">
   <div class="sec-hdr rose">
     <div class="sec-hdr-icon">🔬</div>
@@ -305,7 +294,6 @@ tr:hover td{background:rgba(0,201,167,.04)}
   <div class="kpi-grid" id="kpi-surv"><div class="loading"><div class="spin"></div></div></div>
 
   <div class="grid2">
-    <!-- Infection Trend -->
     <div class="card">
       <div class="card-hdr">
         <div>
@@ -317,7 +305,6 @@ tr:hover td{background:rgba(0,201,167,.04)}
       <div class="chart-wrap"><canvas id="c-inf-trend" height="200"></canvas></div>
     </div>
 
-    <!-- Infection Type Donut -->
     <div class="card">
       <div class="card-hdr">
         <div>
@@ -330,7 +317,6 @@ tr:hover td{background:rgba(0,201,167,.04)}
     </div>
   </div>
 
-  <!-- Patient table -->
   <div class="card">
     <div class="card-hdr">
       <div class="card-title"><span class="dot" style="background:var(--teal)"></span>👤 รายชื่อผู้ป่วยในระบบเฝ้าระวัง</div>
@@ -348,9 +334,7 @@ tr:hover td{background:rgba(0,201,167,.04)}
   </div>
 </div>
 
-</div><!-- end wrap -->
-
-<script>
+</div><script>
 const API = 'https://script.google.com/macros/s/AKfycbwYYomUMt7OcyNy5mfpLSbGH-UG3oSq2nIXLrQllaXjv83oBEfWQWeIwOIptbNaF4dgEQ/exec';
 let DB = { bundle:[], daily:[], patient:[] };
 let CH = {};
@@ -536,33 +520,62 @@ function renderBundleTrend() {
   const period = document.getElementById('sel-period-b')?.value||'month';
 
   let rows = DB.bundle;
+  // กรองตามประเภท Bundle
   if(bSel!=='all') rows = rows.filter(r=>r.bundleType===bSel.toUpperCase());
-  if(wSel!=='all') rows = rows.filter(r=>r.ward===wSel);
 
-  const grouped = {};
-  rows.forEach(r => {
-    const k = periodKey(r.timestamp, period);
-    if(!grouped[k]) grouped[k]={y:0,n:0};
-    for(let i=1;i<=16;i++){
-      const v=(r[`Q${i}`]||r['q'+i]||'').toString().trim().toUpperCase();
-      if(v==='Y'||v==='ทำ/ใช่') grouped[k].y++;
-      else if(v==='N'||v==='ไม่ทำ') grouped[k].n++;
-    }
+  // หา Ward ที่จะเอามาลงกราฟวิ่งแข่งกัน
+  let allWards = [];
+  if (wSel === 'all') {
+    // ถ้าดูภาพรวม ให้ดึงแค่ Top 6 ตึกที่ยอดประเมินเยอะสุดมาแข่งกัน กราฟจะได้ไม่รก
+    const wardCounts = groupBy(rows, 'ward');
+    allWards = Object.keys(wardCounts)
+      .filter(w => w && w !== 'undefined')
+      .sort((a, b) => wardCounts[b].length - wardCounts[a].length)
+      .slice(0, 6);
+  } else {
+    // ถ้าเลือกดูเฉพาะตึก ก็โชว์แค่ตึกนั้น
+    allWards = [wSel];
+    rows = rows.filter(r => r.ward === wSel);
+  }
+
+  // หาแกน X (ช่วงเวลาตามที่เลือก: วัน/สัปดาห์/เดือน)
+  const periodSet = new Set();
+  rows.forEach(r => periodSet.add(periodKey(r.timestamp, period)));
+  const labels = [...periodSet].slice(-15); // โชว์ 15 ช่วงเวลาย้อนหลัง
+
+  // สร้างเส้นกราฟแข่งกันแต่ละตึก
+  const datasets = allWards.map((w, i) => {
+    const wr = DB.bundle.filter(r => r.ward === w && (bSel === 'all' || r.bundleType === bSel.toUpperCase()));
+    const data = labels.map(lbl => wr.filter(r => periodKey(r.timestamp, period) === lbl).length);
+    return {
+      label: w,
+      data: data,
+      borderColor: COLORS[i % COLORS.length],
+      backgroundColor: 'transparent',
+      tension: 0.4,
+      borderWidth: 2.5,
+      pointRadius: 4
+    };
   });
-
-  const labels = Object.keys(grouped).slice(-20);
-  const data = labels.map(k => pct(grouped[k].y, grouped[k].n));
 
   destroyChart('trend');
   CH['trend'] = new Chart(document.getElementById('c-trend'), {
-    type:'line',
-    data:{labels, datasets:[{
-      label:'Compliance %', data, borderColor:'#00c9a7', backgroundColor:'rgba(0,201,167,.1)',
-      tension:.4, fill:true, pointBackgroundColor:'#00c9a7', pointRadius:4, borderWidth:2.5
-    }]},
-    options:{responsive:true, plugins:{legend:{display:false}},
-      scales:{y:{min:0,max:100,ticks:{color:'#6b84a8',callback:v=>v+'%'},grid:{color:'#1a3050'}},
-              x:{ticks:{color:'#e2eaf7',font:{size:10}},grid:{display:false}}}}
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      plugins: { 
+        legend: { display: true, position: 'top', labels: { color: '#e2eaf7', font: { size: 11, family: 'Sarabun' } } } 
+      },
+      scales: {
+        y: { 
+          min: 0, 
+          ticks: { color: '#6b84a8', stepSize: 1 }, // ให้แกน Y นับทีละ 1 
+          grid: { color: '#1a3050' } 
+        },
+        x: { ticks: { color: '#e2eaf7', font: { size: 10 } }, grid: { display: false } }
+      }
+    }
   });
 }
 
