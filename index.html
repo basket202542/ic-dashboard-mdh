@@ -182,8 +182,8 @@ tr:hover td{background:rgba(0,201,167,.04)}
         <select class="mini" id="sel-ward-b" onchange="renderBundleTrend()"><option value="all">ทุก Ward</option></select>
         <select class="mini" id="sel-period-b" onchange="renderBundleTrend()">
           <option value="day">รายวัน</option>
-          <option value="week">รายสัปดาห์</option>
-          <option value="month" selected>รายเดือน</option>
+          <option value="week" selected>รายสัปดาห์</option>
+          <option value="month">รายเดือน</option>
           <option value="year">รายปี</option>
         </select>
       </div>
@@ -247,8 +247,8 @@ tr:hover td{background:rgba(0,201,167,.04)}
           <select class="mini" id="sel-ward-dc" onchange="renderDCTrend()"><option value="all">ทุก Ward</option></select>
           <select class="mini" id="sel-period-dc" onchange="renderDCTrend()">
             <option value="day">รายวัน</option>
-            <option value="week">รายสัปดาห์</option>
-            <option value="month" selected>รายเดือน</option>
+            <option value="week" selected>รายสัปดาห์</option>
+            <option value="month">รายเดือน</option>
             <option value="year">รายปี</option>
           </select>
         </div>
@@ -372,8 +372,14 @@ function safeDate(v) {
   if (!v) return new Date();
   if (v instanceof Date) return v;
   let str = String(v).trim();
+  
+  // กันเหนียว: เผื่อวันไหนข้อมูลมาเป็นตัวเลข Excel (เช่น 46075)
+  if (/^\\d{5}$/.test(str)) {
+     return new Date((Number(str) - 25569) * 86400 * 1000);
+  }
+  
   if (str.includes('/')) { // แก้บั๊กวันที่รูปแบบ DD/MM/YYYY
-    let parts = str.split(/[\s,T]+/)[0].split('/');
+    let parts = str.split(/[\\s,T]+/)[0].split('/');
     if (parts.length === 3) {
       let d = parseInt(parts[0], 10);
       let m = parseInt(parts[1], 10) - 1;
@@ -524,7 +530,7 @@ function renderBundleKPI() {
 function renderBundleTrend() {
   const bSel = document.getElementById('sel-bundle')?.value||'all';
   const wSel = document.getElementById('sel-ward-b')?.value||'all';
-  const period = document.getElementById('sel-period-b')?.value||'month';
+  const period = document.getElementById('sel-period-b')?.value||'week'; // ค่าเริ่มต้นเป็นรายสัปดาห์
 
   let rows = DB.bundle;
   if(bSel!=='all') rows = rows.filter(r=>r.bundleType===bSel.toUpperCase());
@@ -543,7 +549,7 @@ function renderBundleTrend() {
      const info = getPeriodInfo(r.timestamp, period);
      timeMap.set(info.sortKey, info.label);
   });
-  const sortedKeys = Array.from(timeMap.keys()).sort().slice(-20); // ดึง 20 แกนเวลาล่าสุดมาเรียง
+  const sortedKeys = Array.from(timeMap.keys()).sort().slice(-20);
   const labels = sortedKeys.map(k => timeMap.get(k));
 
   const datasets = allWards.map((w, i) => {
@@ -555,7 +561,7 @@ function renderBundleTrend() {
       label: w, data: data,
       borderColor: COLORS[i % COLORS.length],
       backgroundColor: 'transparent',
-      tension: 0.3, // ทำให้กราฟเป็นเส้นโค้งสมูทเหมือนหุ้น
+      tension: 0.35, /* ปรับให้โค้งสมูทเหมือนกราฟหุ้น */
       borderWidth: 3,
       pointRadius: 4
     };
@@ -616,7 +622,7 @@ function renderBundleTable() {
       <td style="color:var(--muted);font-family:var(--mono);font-size:.72rem">${fmtDate(r.timestamp)}</td>
       <td>${r.ward||'-'}</td>
       <td style="color:var(--muted)">${r.position||'-'}</td>
-      <td><span class="badge b-${bt.replace(/\s+/g,'')}">${bt.toUpperCase()||'-'}</span></td>
+      <td><span class="badge b-${bt.replace(/\\s+/g,'')}">${bt.toUpperCase()||'-'}</span></td>
       <td>${p!=null?`<div class="pct-bar"><div class="pct-track"><div class="pct-fill" style="width:${p}%;background:${c}"></div></div><span style="color:${c};font-family:var(--mono);font-size:.78rem;font-weight:600">${p}%</span></div>`:'-'}</td>
     </tr>`;
   }).join('')}</tbody></table>`;
@@ -640,7 +646,7 @@ function renderICNKPI() {
 
 function renderDCTrend() {
   const wSel = document.getElementById('sel-ward-dc')?.value||'all';
-  const period = document.getElementById('sel-period-dc')?.value||'month';
+  const period = document.getElementById('sel-period-dc')?.value||'week';
   let rows = DB.daily;
   if(wSel!=='all') rows = rows.filter(r=>r.ward===wSel);
 
@@ -660,7 +666,7 @@ function renderDCTrend() {
     const data = sortedKeys.map(key => {
        return wr.filter(r => getPeriodInfo(r.record_date, period).sortKey === key).length;
     });
-    return {label:w, data, borderColor:COLORS[i%COLORS.length], backgroundColor:'transparent', tension:0.3, borderWidth:2.5, pointRadius:4};
+    return {label:w, data, borderColor:COLORS[i%COLORS.length], backgroundColor:'transparent', tension:0.35, borderWidth:2.5, pointRadius:4};
   });
 
   destroyChart('dctrend');
