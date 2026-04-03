@@ -75,7 +75,8 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
 .full{grid-column:1/-1}
-@media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr}}
+@media(max-width:1100px){.grid3{grid-template-columns:1fr 1fr}}
+@media(max-width:800px){.grid2,.grid3{grid-template-columns:1fr}}
 
 /* CARD */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px}
@@ -208,12 +209,21 @@ tr:hover td{background:rgba(0,201,167,.04)}
           <div class="card-title"><span class="dot" style="background:var(--amber)"></span>🏨 Ward Comparison</div>
           <div class="card-sub">Compliance % เปรียบเทียบระหว่าง Ward</div>
         </div>
-        <select class="mini" id="sel-bundle-ward" onchange="renderWardComp()">
-          <option value="all">ทุก Bundle</option>
-          <option value="VAP">VAP</option><option value="CAUTI">CAUTI</option>
-          <option value="CLABSI">CLABSI</option><option value="SSI">SSI</option>
-          <option value="เชื้อดื้อยา">MDR</option><option value="HAND HYGIENE">Hand Hygiene</option>
-        </select>
+        <div class="ctrl">
+          <select class="mini" id="sel-bundle-ward" onchange="renderWardComp()">
+            <option value="all">ทุก Bundle</option>
+            <option value="VAP">VAP</option><option value="CAUTI">CAUTI</option>
+            <option value="CLABSI">CLABSI</option><option value="SSI">SSI</option>
+            <option value="เชื้อดื้อยา">MDR</option><option value="HAND HYGIENE">Hand Hygiene</option>
+          </select>
+          <select class="mini" id="sel-period-ward" onchange="renderWardComp()">
+            <option value="all" selected>ทุกเวลา</option>
+            <option value="today">วันนี้</option>
+            <option value="week">สัปดาห์นี้</option>
+            <option value="month">เดือนนี้</option>
+            <option value="year">ปีนี้</option>
+          </select>
+        </div>
       </div>
       <div class="chart-wrap"><canvas id="c-ward" height="200"></canvas></div>
     </div>
@@ -224,7 +234,16 @@ tr:hover td{background:rgba(0,201,167,.04)}
           <div class="card-title"><span class="dot" style="background:var(--purple)"></span>👩‍⚕️ Position Analytics</div>
           <div class="card-sub">จำนวนการประเมินแยกตามตำแหน่ง</div>
         </div>
-        <select class="mini" id="sel-ward-pos" onchange="renderPositionChart()"><option value="all">ทุก Ward</option></select>
+        <div class="ctrl">
+          <select class="mini" id="sel-ward-pos" onchange="renderPositionChart()"><option value="all">ทุก Ward</option></select>
+          <select class="mini" id="sel-period-pos" onchange="renderPositionChart()">
+            <option value="all" selected>ทุกเวลา</option>
+            <option value="today">วันนี้</option>
+            <option value="week">สัปดาห์นี้</option>
+            <option value="month">เดือนนี้</option>
+            <option value="year">ปีนี้</option>
+          </select>
+        </div>
       </div>
       <div class="chart-wrap"><canvas id="c-pos" height="200"></canvas></div>
     </div>
@@ -244,6 +263,13 @@ tr:hover td{background:rgba(0,201,167,.04)}
           </select>
           <select class="mini" id="sel-ward-poscomp" onchange="renderPositionCompliance()">
             <option value="all">ทุก Ward</option>
+          </select>
+          <select class="mini" id="sel-period-poscomp" onchange="renderPositionCompliance()">
+            <option value="all" selected>ทุกเวลา</option>
+            <option value="today">วันนี้</option>
+            <option value="week">สัปดาห์นี้</option>
+            <option value="month">เดือนนี้</option>
+            <option value="year">ปีนี้</option>
           </select>
         </div>
       </div>
@@ -482,6 +508,34 @@ function normalizeData() {
   });
 }
 
+// Helper Function: กรองข้อมูลตามช่วงเวลา
+function filterByTime(rows, period) {
+  if(!period || period === 'all') return rows;
+  const now = new Date();
+  const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(); // เที่ยงคืนวันนี้
+  
+  return rows.filter(r => {
+    const d = new Date(r.timestamp);
+    const dt = d.getTime();
+    
+    if(period === 'today') {
+      return d.toDateString() === now.toDateString();
+    }
+    if(period === 'week') {
+      const day = now.getDay();
+      const startOfWeek = t0 - (day * 86400000); // ย้อนไปวันอาทิตย์
+      return dt >= startOfWeek;
+    }
+    if(period === 'month') {
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }
+    if(period === 'year') {
+      return d.getFullYear() === now.getFullYear();
+    }
+    return true;
+  });
+}
+
 function getPeriodInfo(dateObj, period) {
   const d = new Date(dateObj);
   let sortKey = '', label = '';
@@ -504,7 +558,7 @@ function getPeriodInfo(dateObj, period) {
 
 function populateDropdowns() {
   const wards = [...new Set([...DB.bundle.map(r=>r.ward), ...DB.daily.map(r=>r.ward), ...DB.patient.map(r=>r.ward)])].filter(Boolean).sort();
-  ['sel-ward-b','sel-ward-pos','sel-ward-dc','sel-ward-dct','sel-ward-inf','sel-ward-donut','sel-ward-pt','sel-ward-bundlecomp','sel-ward-poscomp'].forEach(id => {
+  ['sel-ward-b','sel-ward-pos','sel-ward-dc','sel-ward-dct','sel-ward-inf','sel-ward-donut','sel-ward-pt','sel-ward-poscomp'].forEach(id => {
     const el = document.getElementById(id);
     if(!el) return;
     const cur = el.value;
@@ -512,8 +566,16 @@ function populateDropdowns() {
     wards.forEach(w => el.insertAdjacentHTML('beforeend', `<option value="${w}">${w}</option>`));
     if(cur) el.value = cur;
   });
-  const wc = document.getElementById('sel-bundle-ward');
-  if(wc) { const c=wc.value; wc.innerHTML='<option value="all">ทุก Bundle</option><option value="VAP">VAP</option><option value="CAUTI">CAUTI</option><option value="CLABSI">CLABSI</option><option value="SSI">SSI</option><option value="เชื้อดื้อยา">MDR</option><option value="HAND HYGIENE">Hand Hygiene</option>'; if(c) wc.value=c; }
+  
+  const bundles = ['sel-bundle','sel-bundle-ward','sel-bundle-poscomp'];
+  bundles.forEach(id => {
+    const el = document.getElementById(id);
+    if(el) {
+      const cur = el.value;
+      el.innerHTML='<option value="all">ทุก Bundle</option><option value="VAP">VAP</option><option value="CAUTI">CAUTI</option><option value="CLABSI">CLABSI</option><option value="SSI">SSI</option><option value="เชื้อดื้อยา">MDR</option><option value="HAND HYGIENE">Hand Hygiene</option>';
+      if(cur) el.value = cur;
+    }
+  });
 }
 
 function pct(y, n) { return (y+n)>0 ? Math.round(y/(y+n)*100) : null; }
@@ -547,24 +609,14 @@ function renderAll() {
 // ==================== PENDING WARDS ALERT ====================
 function renderPendingWards() {
   const todayStr = new Date().toDateString();
-  
-  // หาตึกที่ประเมินแล้วในวันนี้
-  const assessedToday = new Set(
-    DB.bundle
-      .filter(r => safeDate(r.timestamp).toDateString() === todayStr)
-      .map(r => r.ward)
-  );
-
-  // คัดกรองหาตึกที่ "หายไป"
+  const assessedToday = new Set(DB.bundle.filter(r => safeDate(r.timestamp).toDateString() === todayStr).map(r => r.ward));
   const missingWards = ALL_MDH_WARDS.filter(w => !assessedToday.has(w));
-  
   const container = document.getElementById('pending-wards-list');
+  
   if (missingWards.length === 0) {
     container.innerHTML = `<span style="color: var(--green); font-size: 0.9rem; font-weight: 600;"><i class="fa-solid fa-check-circle"></i> 🎉 ยอดเยี่ยม! ทุกหน่วยงานส่งข้อมูลประเมินครบแล้วสำหรับวันนี้</span>`;
   } else {
-    container.innerHTML = missingWards.map(w => 
-      `<span style="background: rgba(244,63,94,0.15); color: #fb7185; border: 1px solid rgba(244,63,94,0.4); padding: 5px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 500;">${w}</span>`
-    ).join('');
+    container.innerHTML = missingWards.map(w => `<span style="background: rgba(244,63,94,0.15); color: #fb7185; border: 1px solid rgba(244,63,94,0.4); padding: 5px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 500;">${w}</span>`).join('');
   }
 }
 
@@ -619,9 +671,7 @@ function renderBundleTrend() {
       label: w, data: data,
       borderColor: COLORS[i % COLORS.length],
       backgroundColor: 'transparent',
-      tension: 0.35, 
-      borderWidth: 3,
-      pointRadius: 4
+      tension: 0.35, borderWidth: 3, pointRadius: 4
     };
   });
 
@@ -641,12 +691,17 @@ function renderBundleTrend() {
 
 function renderWardComp() {
   const bSel = document.getElementById('sel-bundle-ward')?.value||'all';
+  const pSel = document.getElementById('sel-period-ward')?.value||'all';
+  
   let rows = DB.bundle;
   if(bSel!=='all') rows = rows.filter(r=>r.bundleType===bSel.toUpperCase());
+  rows = filterByTime(rows, pSel); // กรองเวลา
+
   const wardMap = groupBy(rows, 'ward');
   const labels = Object.keys(wardMap).slice(0,15);
   const data = labels.map(w => calcCompliance(wardMap[w]).pct??0);
   const colors = data.map(p=>pctColor(p));
+  
   destroyChart('ward');
   CH['ward'] = new Chart(document.getElementById('c-ward'), {
     type:'bar', data:{labels, datasets:[{label:'Compliance %',data,backgroundColor:colors.map(c=>c+'99'),borderColor:colors,borderWidth:2,borderRadius:5}]},
@@ -656,11 +711,16 @@ function renderWardComp() {
 
 function renderPositionChart() {
   const wSel = document.getElementById('sel-ward-pos')?.value||'all';
+  const pSel = document.getElementById('sel-period-pos')?.value||'all';
+  
   let rows = DB.bundle;
   if(wSel!=='all') rows = rows.filter(r=>r.ward===wSel);
+  rows = filterByTime(rows, pSel); // กรองเวลา
+
   const posMap = groupBy(rows, 'position');
   const labels = Object.keys(posMap);
   const data = labels.map(p=>posMap[p].length);
+  
   destroyChart('pos');
   CH['pos'] = new Chart(document.getElementById('c-pos'), {
     type:'doughnut', data:{labels, datasets:[{data, backgroundColor:COLORS.map(c=>c+'cc'), borderColor:COLORS, borderWidth:2, hoverOffset:6}]},
@@ -671,20 +731,14 @@ function renderPositionChart() {
 function renderPositionCompliance() {
   const bSel = document.getElementById('sel-bundle-poscomp')?.value || 'all';
   const wSel = document.getElementById('sel-ward-poscomp')?.value || 'all';
+  const pSel = document.getElementById('sel-period-poscomp')?.value || 'all';
+  
   let rows = DB.bundle;
-
-  // กรองตามประเภท Bundle
-  if(bSel !== 'all') {
-    rows = rows.filter(r => r.bundleType === bSel.toUpperCase());
-  }
-
-  // กรองตาม Ward
-  if(wSel !== 'all') {
-    rows = rows.filter(r => r.ward === wSel);
-  }
+  if(bSel !== 'all') rows = rows.filter(r => r.bundleType === bSel.toUpperCase());
+  if(wSel !== 'all') rows = rows.filter(r => r.ward === wSel);
+  rows = filterByTime(rows, pSel); // กรองเวลา
 
   const posMap = groupBy(rows, 'position');
-  
   let posData = Object.keys(posMap).map(pos => {
     const { y, n, pct } = calcCompliance(posMap[pos]);
     return { position: pos || 'ไม่ระบุ', pct: pct, total: y + n };
@@ -699,21 +753,9 @@ function renderPositionCompliance() {
   destroyChart('poscomp');
   CH['poscomp'] = new Chart(document.getElementById('c-pos-comp'), {
     type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Compliance %',
-        data,
-        backgroundColor: colors.map(c => c + '99'),
-        borderColor: colors,
-        borderWidth: 2,
-        borderRadius: 5
-      }]
-    },
+    data: { labels, datasets: [{ label: 'Compliance %', data, backgroundColor: colors.map(c => c + '99'), borderColor: colors, borderWidth: 2, borderRadius: 5 }] },
     options: {
-      responsive: true,
-      indexAxis: 'y',
-      plugins: { legend: { display: false } },
+      responsive: true, indexAxis: 'y', plugins: { legend: { display: false } },
       scales: {
         x: { min: 0, max: 100, ticks: { color: '#6b84a8', callback: v => v + '%' }, grid: { color: '#1a3050' } },
         y: { ticks: { color: '#e2eaf7', font: { size: 10 } }, grid: { display: false } }
