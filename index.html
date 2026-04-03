@@ -201,7 +201,7 @@ tr:hover td{background:rgba(0,201,167,.04)}
     </div>
   </div>
 
-  <div class="grid2">
+  <div class="grid3">
     <div class="card">
       <div class="card-hdr">
         <div>
@@ -227,6 +227,22 @@ tr:hover td{background:rgba(0,201,167,.04)}
         <select class="mini" id="sel-ward-pos" onchange="renderPositionChart()"><option value="all">ทุก Ward</option></select>
       </div>
       <div class="chart-wrap"><canvas id="c-pos" height="200"></canvas></div>
+    </div>
+
+    <div class="card">
+      <div class="card-hdr">
+        <div>
+          <div class="card-title"><span class="dot" style="background:var(--rose)"></span>⚠️ Compliance by Role</div>
+          <div class="card-sub">อัตราปฏิบัติตามมาตรฐานแยกตามตำแหน่ง</div>
+        </div>
+        <select class="mini" id="sel-bundle-poscomp" onchange="renderPositionCompliance()">
+          <option value="all">ทุก Bundle</option>
+          <option value="VAP">VAP</option><option value="CAUTI">CAUTI</option>
+          <option value="CLABSI">CLABSI</option><option value="SSI">SSI</option>
+          <option value="เชื้อดื้อยา">MDR</option><option value="HAND HYGIENE">Hand Hygiene</option>
+        </select>
+      </div>
+      <div class="chart-wrap"><canvas id="c-pos-comp" height="200"></canvas></div>
     </div>
   </div>
 
@@ -518,7 +534,7 @@ function sw(tab) {
 }
 
 function renderAll() {
-  renderBundleKPI(); renderPendingWards(); renderBundleTrend(); renderWardComp(); renderPositionChart(); renderBundleTable();
+  renderBundleKPI(); renderPendingWards(); renderBundleTrend(); renderWardComp(); renderPositionChart(); renderPositionCompliance(); renderBundleTable();
   renderICNKPI(); renderDCTrend(); renderDeviceChart(); renderDCTable();
   renderSurvKPI(); renderInfTrend(); renderDonut(); renderPatientTable();
 }
@@ -644,6 +660,52 @@ function renderPositionChart() {
   CH['pos'] = new Chart(document.getElementById('c-pos'), {
     type:'doughnut', data:{labels, datasets:[{data, backgroundColor:COLORS.map(c=>c+'cc'), borderColor:COLORS, borderWidth:2, hoverOffset:6}]},
     options:{responsive:true,plugins:{legend:{labels:{color:'#e2eaf7',font:{size:11}}}},cutout:'55%'}
+  });
+}
+
+function renderPositionCompliance() {
+  const bSel = document.getElementById('sel-bundle-poscomp')?.value || 'all';
+  let rows = DB.bundle;
+  if(bSel !== 'all') {
+    rows = rows.filter(r => r.bundleType === bSel.toUpperCase());
+  }
+
+  const posMap = groupBy(rows, 'position');
+  
+  let posData = Object.keys(posMap).map(pos => {
+    const { y, n, pct } = calcCompliance(posMap[pos]);
+    return { position: pos || 'ไม่ระบุ', pct: pct, total: y + n };
+  }).filter(d => d.total > 0 && d.pct !== null); 
+
+  posData.sort((a, b) => a.pct - b.pct);
+
+  const labels = posData.map(d => d.position);
+  const data = posData.map(d => d.pct);
+  const colors = data.map(p => pctColor(p));
+
+  destroyChart('poscomp');
+  CH['poscomp'] = new Chart(document.getElementById('c-pos-comp'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Compliance %',
+        data,
+        backgroundColor: colors.map(c => c + '99'),
+        borderColor: colors,
+        borderWidth: 2,
+        borderRadius: 5
+      }]
+    },
+    options: {
+      responsive: true,
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { min: 0, max: 100, ticks: { color: '#6b84a8', callback: v => v + '%' }, grid: { color: '#1a3050' } },
+        y: { ticks: { color: '#e2eaf7', font: { size: 10 } }, grid: { display: false } }
+      }
+    }
   });
 }
 
