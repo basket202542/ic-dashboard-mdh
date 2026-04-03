@@ -235,12 +235,17 @@ tr:hover td{background:rgba(0,201,167,.04)}
           <div class="card-title"><span class="dot" style="background:var(--rose)"></span>⚠️ Compliance by Role</div>
           <div class="card-sub">อัตราปฏิบัติตามมาตรฐานแยกตามตำแหน่ง</div>
         </div>
-        <select class="mini" id="sel-bundle-poscomp" onchange="renderPositionCompliance()">
-          <option value="all">ทุก Bundle</option>
-          <option value="VAP">VAP</option><option value="CAUTI">CAUTI</option>
-          <option value="CLABSI">CLABSI</option><option value="SSI">SSI</option>
-          <option value="เชื้อดื้อยา">MDR</option><option value="HAND HYGIENE">Hand Hygiene</option>
-        </select>
+        <div class="ctrl">
+          <select class="mini" id="sel-bundle-poscomp" onchange="renderPositionCompliance()">
+            <option value="all">ทุก Bundle</option>
+            <option value="VAP">VAP</option><option value="CAUTI">CAUTI</option>
+            <option value="CLABSI">CLABSI</option><option value="SSI">SSI</option>
+            <option value="เชื้อดื้อยา">MDR</option><option value="HAND HYGIENE">Hand Hygiene</option>
+          </select>
+          <select class="mini" id="sel-ward-poscomp" onchange="renderPositionCompliance()">
+            <option value="all">ทุก Ward</option>
+          </select>
+        </div>
       </div>
       <div class="chart-wrap"><canvas id="c-pos-comp" height="200"></canvas></div>
     </div>
@@ -499,7 +504,7 @@ function getPeriodInfo(dateObj, period) {
 
 function populateDropdowns() {
   const wards = [...new Set([...DB.bundle.map(r=>r.ward), ...DB.daily.map(r=>r.ward), ...DB.patient.map(r=>r.ward)])].filter(Boolean).sort();
-  ['sel-ward-b','sel-ward-pos','sel-ward-dc','sel-ward-dct','sel-ward-inf','sel-ward-donut','sel-ward-pt','sel-ward-bundlecomp'].forEach(id => {
+  ['sel-ward-b','sel-ward-pos','sel-ward-dc','sel-ward-dct','sel-ward-inf','sel-ward-donut','sel-ward-pt','sel-ward-bundlecomp','sel-ward-poscomp'].forEach(id => {
     const el = document.getElementById(id);
     if(!el) return;
     const cur = el.value;
@@ -665,9 +670,17 @@ function renderPositionChart() {
 
 function renderPositionCompliance() {
   const bSel = document.getElementById('sel-bundle-poscomp')?.value || 'all';
+  const wSel = document.getElementById('sel-ward-poscomp')?.value || 'all';
   let rows = DB.bundle;
+
+  // กรองตามประเภท Bundle
   if(bSel !== 'all') {
     rows = rows.filter(r => r.bundleType === bSel.toUpperCase());
+  }
+
+  // กรองตาม Ward
+  if(wSel !== 'all') {
+    rows = rows.filter(r => r.ward === wSel);
   }
 
   const posMap = groupBy(rows, 'position');
