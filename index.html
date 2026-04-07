@@ -79,12 +79,12 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 @media(max-width:800px){.grid2,.grid3{grid-template-columns:1fr}}
 
 /* CARD */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px}
-.card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:8px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;display:flex;flex-direction:column}
+.card-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:8px}
 .card-title{font-size:.85rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px}
 .dot{width:7px;height:7px;border-radius:50%;display:inline-block}
 .card-sub{font-size:.7rem;color:var(--muted);margin-bottom:14px;font-family:var(--mono)}
-.chart-wrap{position:relative}
+.chart-wrap{position:relative;flex:1}
 
 /* CONTROLS */
 .ctrl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -221,11 +221,16 @@ tr:hover td{background:rgba(0,201,167,.04)}
             <option value="today">วันนี้</option>
             <option value="week">สัปดาห์นี้</option>
             <option value="month">เดือนนี้</option>
+            <option value="last_month">เดือนที่แล้ว (มี.ค.)</option>
             <option value="year">ปีนี้</option>
           </select>
         </div>
       </div>
       <div class="chart-wrap"><canvas id="c-ward" height="200"></canvas></div>
+      <div style="margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--border);">
+        <div style="font-size: 0.72rem; color: var(--rose); margin-bottom: 6px; font-weight: 600;">🚨 หน่วยงานที่ไม่มีข้อมูลประเมินในข่วงเวลานี้:</div>
+        <div id="missing-wards-wardcomp" style="display:flex; flex-wrap:wrap; gap:5px;"></div>
+      </div>
     </div>
 
     <div class="card">
@@ -241,6 +246,7 @@ tr:hover td{background:rgba(0,201,167,.04)}
             <option value="today">วันนี้</option>
             <option value="week">สัปดาห์นี้</option>
             <option value="month">เดือนนี้</option>
+            <option value="last_month">เดือนที่แล้ว (มี.ค.)</option>
             <option value="year">ปีนี้</option>
           </select>
         </div>
@@ -269,6 +275,7 @@ tr:hover td{background:rgba(0,201,167,.04)}
             <option value="today">วันนี้</option>
             <option value="week">สัปดาห์นี้</option>
             <option value="month">เดือนนี้</option>
+            <option value="last_month">เดือนที่แล้ว (มี.ค.)</option>
             <option value="year">ปีนี้</option>
           </select>
         </div>
@@ -508,7 +515,7 @@ function normalizeData() {
   });
 }
 
-// Helper Function: กรองข้อมูลตามช่วงเวลา
+// Helper Function: กรองข้อมูลตามช่วงเวลา (อัปเกรดให้มีเดือนที่แล้ว)
 function filterByTime(rows, period) {
   if(!period || period === 'all') return rows;
   const now = new Date();
@@ -528,6 +535,12 @@ function filterByTime(rows, period) {
     }
     if(period === 'month') {
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }
+    if(period === 'last_month') {
+      let lastMonth = now.getMonth() - 1;
+      let year = now.getFullYear();
+      if (lastMonth < 0) { lastMonth = 11; year--; }
+      return d.getMonth() === lastMonth && d.getFullYear() === year;
     }
     if(period === 'year') {
       return d.getFullYear() === now.getFullYear();
@@ -698,7 +711,22 @@ function renderWardComp() {
   rows = filterByTime(rows, pSel); // กรองเวลา
 
   const wardMap = groupBy(rows, 'ward');
-  const labels = Object.keys(wardMap).slice(0,15);
+  
+  // สร้างรายชื่อหน่วยงานที่ "ไม่ได้ประเมิน" สำหรับโชว์ใต้กราฟ
+  const assessedWards = new Set(Object.keys(wardMap).filter(w => w !== '?' && w !== 'undefined' && w.trim() !== ''));
+  const missingWards = ALL_MDH_WARDS.filter(w => !assessedWards.has(w));
+  const missingContainer = document.getElementById('missing-wards-wardcomp');
+  if (missingContainer) {
+      if (missingWards.length === 0) {
+          missingContainer.innerHTML = `<span style="color: var(--green); font-size: 0.75rem;"><i class="fa-solid fa-check"></i> ประเมินครบทุกหน่วยงาน</span>`;
+      } else {
+          missingContainer.innerHTML = missingWards.map(w => `<span style="background: rgba(244,63,94,0.1); color: #fb7185; border: 1px solid rgba(244,63,94,0.3); padding: 2px 8px; border-radius: 12px; font-size: 0.68rem;">${w}</span>`).join('');
+      }
+  }
+
+  // เรียงลำดับตึกที่ประเมินมากที่สุดขึ้นก่อน (Ranking)
+  const sortedWards = Object.keys(wardMap).sort((a,b) => wardMap[b].length - wardMap[a].length);
+  const labels = sortedWards.slice(0,15); // เอา 15 อันดับแรก
   const data = labels.map(w => calcCompliance(wardMap[w]).pct??0);
   const colors = data.map(p=>pctColor(p));
   
