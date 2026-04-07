@@ -181,11 +181,20 @@ tr:hover td{background:rgba(0,201,167,.04)}
           <option value="เชื้อดื้อยา">MDR</option><option value="HAND HYGIENE">Hand Hygiene</option>
         </select>
         <select class="mini" id="sel-ward-b" onchange="renderBundleTrend()"><option value="all">ทุก Ward</option></select>
-        <select class="mini" id="sel-period-b" onchange="renderBundleTrend()">
-          <option value="day">รายวัน</option>
-          <option value="week" selected>รายสัปดาห์</option>
-          <option value="month">รายเดือน</option>
-          <option value="year">รายปี</option>
+        
+        <select class="mini" id="sel-filter-period-b" onchange="renderBundleTrend()">
+          <option value="all" selected>ทุกเวลา</option>
+          <option value="today">วันนี้</option>
+          <option value="week">สัปดาห์นี้</option>
+          <option value="month">เดือนนี้</option>
+          <option value="last_month">เดือนที่แล้ว (มี.ค.)</option>
+          <option value="year">ปีนี้</option>
+        </select>
+        
+        <select class="mini" id="sel-groupby-b" onchange="renderBundleTrend()">
+          <option value="day">แกน X: รายวัน</option>
+          <option value="week" selected>แกน X: สัปดาห์</option>
+          <option value="month">แกน X: รายเดือน</option>
         </select>
       </div>
     </div>
@@ -193,10 +202,21 @@ tr:hover td{background:rgba(0,201,167,.04)}
   </div>
 
   <div class="card" style="margin-bottom:16px; border: 1px solid rgba(244,63,94,0.3); background: rgba(244,63,94,0.02);">
-    <div class="card-title" style="margin-bottom:8px; color: var(--rose);">
-      <span class="dot" style="background:var(--rose); box-shadow: 0 0 8px var(--rose);"></span>🚨 Pending Today (หน่วยงานที่ยังไม่ประเมินวันนี้)
+    <div class="card-hdr" style="margin-bottom:12px;">
+      <div>
+        <div class="card-title" style="color: var(--rose);"><span class="dot" style="background:var(--rose); box-shadow: 0 0 8px var(--rose);"></span>🚨 Missing Assessments (ตรวจสอบหน่วยงานที่ยังไม่ประเมิน)</div>
+        <div class="card-sub" style="color: rgba(226,234,247,0.7); margin-bottom:0;">รายชื่อตึกที่ยังไม่มีประวัติส่งข้อมูล Bundle เข้ามาในระบบ ตามช่วงเวลาที่เลือก</div>
+      </div>
+      <div class="ctrl">
+        <select class="mini" id="sel-period-pending" onchange="renderPendingWards()">
+          <option value="today" selected>วันนี้</option>
+          <option value="week">สัปดาห์นี้</option>
+          <option value="month">เดือนนี้</option>
+          <option value="last_month">เดือนที่แล้ว (มี.ค.)</option>
+          <option value="year">ปีนี้</option>
+        </select>
+      </div>
     </div>
-    <div class="card-sub" style="margin-bottom:14px; color: rgba(226,234,247,0.7);">รีบหน่อย! ตึกเหล่านี้ยังไม่มีประวัติส่งข้อมูล Bundle เข้ามาในระบบของวันนี้เลยนะ</div>
     <div id="pending-wards-list" style="display: flex; flex-wrap: wrap; gap: 8px;">
       <div class="loading" style="padding: 10px;"><div class="spin" style="width:16px;height:16px;border-width:2px;"></div></div>
     </div>
@@ -285,7 +305,22 @@ tr:hover td{background:rgba(0,201,167,.04)}
   </div>
 
   <div class="card">
-    <div class="card-title" style="margin-bottom:12px"><span class="dot" style="background:var(--green)"></span>📋 ประวัติการประเมินล่าสุด (50 รายการ)</div>
+    <div class="card-hdr">
+      <div>
+        <div class="card-title"><span class="dot" style="background:var(--green)"></span>📋 ประวัติการประเมินล่าสุด</div>
+      </div>
+      <div class="ctrl">
+        <select class="mini" id="sel-ward-history" onchange="renderBundleTable()"><option value="all">ทุก Ward</option></select>
+        <select class="mini" id="sel-period-history" onchange="renderBundleTable()">
+          <option value="all" selected>ทุกเวลา</option>
+          <option value="today">วันนี้</option>
+          <option value="week">สัปดาห์นี้</option>
+          <option value="month">เดือนนี้</option>
+          <option value="last_month">เดือนที่แล้ว (มี.ค.)</option>
+          <option value="year">ปีนี้</option>
+        </select>
+      </div>
+    </div>
     <div class="tbl-wrap" id="tbl-bundle"><div class="loading"><div class="spin"></div></div></div>
   </div>
 </div>
@@ -515,7 +550,7 @@ function normalizeData() {
   });
 }
 
-// Helper Function: กรองข้อมูลตามช่วงเวลา (อัปเกรดให้มีเดือนที่แล้ว)
+// Helper Function: กรองข้อมูลตามช่วงเวลา (อัปเกรดให้ครอบคลุม)
 function filterByTime(rows, period) {
   if(!period || period === 'all') return rows;
   const now = new Date();
@@ -571,7 +606,7 @@ function getPeriodInfo(dateObj, period) {
 
 function populateDropdowns() {
   const wards = [...new Set([...DB.bundle.map(r=>r.ward), ...DB.daily.map(r=>r.ward), ...DB.patient.map(r=>r.ward)])].filter(Boolean).sort();
-  ['sel-ward-b','sel-ward-pos','sel-ward-dc','sel-ward-dct','sel-ward-inf','sel-ward-donut','sel-ward-pt','sel-ward-poscomp'].forEach(id => {
+  ['sel-ward-b','sel-ward-pos','sel-ward-dc','sel-ward-dct','sel-ward-inf','sel-ward-donut','sel-ward-pt','sel-ward-poscomp','sel-ward-history'].forEach(id => {
     const el = document.getElementById(id);
     if(!el) return;
     const cur = el.value;
@@ -621,13 +656,28 @@ function renderAll() {
 
 // ==================== PENDING WARDS ALERT ====================
 function renderPendingWards() {
-  const todayStr = new Date().toDateString();
-  const assessedToday = new Set(DB.bundle.filter(r => safeDate(r.timestamp).toDateString() === todayStr).map(r => r.ward));
-  const missingWards = ALL_MDH_WARDS.filter(w => !assessedToday.has(w));
+  const pSel = document.getElementById('sel-period-pending')?.value || 'today';
+  
+  // 1. กรองข้อมูลเฉพาะช่วงเวลาที่เลือก
+  const filteredData = filterByTime(DB.bundle, pSel);
+  
+  // 2. ดึงรายชื่อตึกที่ "มีการประเมิน" ในช่วงเวลานั้น
+  const assessedWards = new Set(filteredData.map(r => r.ward).filter(w => w && w !== '?' && w.trim() !== ''));
+  
+  // 3. หาตึกที่ "หายไป"
+  const missingWards = ALL_MDH_WARDS.filter(w => !assessedWards.has(w));
   const container = document.getElementById('pending-wards-list');
   
+  // สร้าง Label เวลาให้ดูสวยงาม
+  let periodLabel = "วันนี้";
+  if(pSel==='week') periodLabel="สัปดาห์นี้";
+  if(pSel==='month') periodLabel="เดือนนี้";
+  if(pSel==='last_month') periodLabel="เดือนที่แล้ว";
+  if(pSel==='year') periodLabel="ปีนี้";
+  if(pSel==='all') periodLabel="ทั้งหมด";
+
   if (missingWards.length === 0) {
-    container.innerHTML = `<span style="color: var(--green); font-size: 0.9rem; font-weight: 600;"><i class="fa-solid fa-check-circle"></i> 🎉 ยอดเยี่ยม! ทุกหน่วยงานส่งข้อมูลประเมินครบแล้วสำหรับวันนี้</span>`;
+    container.innerHTML = `<span style="color: var(--green); font-size: 0.9rem; font-weight: 600;"><i class="fa-solid fa-check-circle"></i> 🎉 ยอดเยี่ยม! ทุกหน่วยงานส่งข้อมูลประเมินครบแล้วสำหรับ${periodLabel}</span>`;
   } else {
     container.innerHTML = missingWards.map(w => `<span style="background: rgba(244,63,94,0.15); color: #fb7185; border: 1px solid rgba(244,63,94,0.4); padding: 5px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 500;">${w}</span>`).join('');
   }
@@ -653,10 +703,14 @@ function renderBundleKPI() {
 function renderBundleTrend() {
   const bSel = document.getElementById('sel-bundle')?.value||'all';
   const wSel = document.getElementById('sel-ward-b')?.value||'all';
-  const period = document.getElementById('sel-period-b')?.value||'week';
+  const pFilter = document.getElementById('sel-filter-period-b')?.value||'all'; // กรองเวลา
+  const pGroup = document.getElementById('sel-groupby-b')?.value||'week'; // แกน X
 
   let rows = DB.bundle;
   if(bSel!=='all') rows = rows.filter(r=>r.bundleType===bSel.toUpperCase());
+  
+  // กรองข้อมูลตามช่วงเวลาที่เลือก (เช่น เฉพาะเดือนที่แล้ว)
+  rows = filterByTime(rows, pFilter);
 
   let allWards = [];
   if (wSel === 'all') {
@@ -669,7 +723,7 @@ function renderBundleTrend() {
 
   const timeMap = new Map();
   rows.forEach(r => {
-     const info = getPeriodInfo(r.timestamp, period);
+     const info = getPeriodInfo(r.timestamp, pGroup); // แบ่งกลุ่มแกน X
      timeMap.set(info.sortKey, info.label);
   });
   const sortedKeys = Array.from(timeMap.keys()).sort().slice(-20);
@@ -678,7 +732,7 @@ function renderBundleTrend() {
   const datasets = allWards.map((w, i) => {
     const wr = rows.filter(r => r.ward === w);
     const data = sortedKeys.map(key => {
-       return wr.filter(r => getPeriodInfo(r.timestamp, period).sortKey === key).length;
+       return wr.filter(r => getPeriodInfo(r.timestamp, pGroup).sortKey === key).length;
     });
     return {
       label: w, data: data,
@@ -793,8 +847,19 @@ function renderPositionCompliance() {
 }
 
 function renderBundleTable() {
-  const rows = [...DB.bundle].reverse().slice(0,50);
-  if(!rows.length){ document.getElementById('tbl-bundle').innerHTML='<div class="empty">ยังไม่มีข้อมูล</div>'; return; }
+  const wSel = document.getElementById('sel-ward-history')?.value || 'all';
+  const pSel = document.getElementById('sel-period-history')?.value || 'all';
+  
+  let rows = DB.bundle;
+  if(wSel !== 'all') rows = rows.filter(r => r.ward === wSel);
+  
+  // กรองเวลา
+  rows = filterByTime(rows, pSel);
+
+  rows = [...rows].reverse().slice(0,50); // ดึงล่าสุด 50 รายการหลังจากกรองแล้ว
+  
+  if(!rows.length){ document.getElementById('tbl-bundle').innerHTML='<div class="empty">ยังไม่มีข้อมูลในข่วงเวลานี้</div>'; return; }
+  
   const html = `<table><thead><tr><th>วันที่</th><th>Ward</th><th>ตำแหน่ง</th><th>Bundle</th><th>Compliance</th></tr></thead><tbody>
   ${rows.map(r=>{
     const bt=r.bundleType.toLowerCase();
