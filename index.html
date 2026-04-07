@@ -236,6 +236,9 @@ tr:hover td{background:rgba(0,201,167,.04)}
             <option value="CLABSI">CLABSI</option><option value="SSI">SSI</option>
             <option value="เชื้อดื้อยา">MDR</option><option value="HAND HYGIENE">Hand Hygiene</option>
           </select>
+          <select class="mini" id="sel-ward-wardcomp" onchange="renderWardComp()">
+            <option value="all">ทุก Ward</option>
+          </select>
           <select class="mini" id="sel-period-ward" onchange="renderWardComp()">
             <option value="all" selected>ทุกเวลา</option>
             <option value="today">วันนี้</option>
@@ -550,11 +553,11 @@ function normalizeData() {
   });
 }
 
-// Helper Function: กรองข้อมูลตามช่วงเวลา (อัปเกรดให้ครอบคลุม)
+// Helper Function: กรองข้อมูลตามช่วงเวลา
 function filterByTime(rows, period) {
   if(!period || period === 'all') return rows;
   const now = new Date();
-  const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(); // เที่ยงคืนวันนี้
+  const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(); 
   
   return rows.filter(r => {
     const d = new Date(r.timestamp);
@@ -565,7 +568,7 @@ function filterByTime(rows, period) {
     }
     if(period === 'week') {
       const day = now.getDay();
-      const startOfWeek = t0 - (day * 86400000); // ย้อนไปวันอาทิตย์
+      const startOfWeek = t0 - (day * 86400000); 
       return dt >= startOfWeek;
     }
     if(period === 'month') {
@@ -597,7 +600,7 @@ function getPeriodInfo(dateObj, period) {
   } else if(period === 'year') {
     sortKey = d.getFullYear().toString();
     label = (d.getFullYear() + 543).toString();
-  } else { // month
+  } else { 
     sortKey = d.getFullYear() + String(d.getMonth()+1).padStart(2,'0');
     label = d.toLocaleDateString('th-TH',{month:'short', year:'2-digit'});
   }
@@ -606,7 +609,7 @@ function getPeriodInfo(dateObj, period) {
 
 function populateDropdowns() {
   const wards = [...new Set([...DB.bundle.map(r=>r.ward), ...DB.daily.map(r=>r.ward), ...DB.patient.map(r=>r.ward)])].filter(Boolean).sort();
-  ['sel-ward-b','sel-ward-pos','sel-ward-dc','sel-ward-dct','sel-ward-inf','sel-ward-donut','sel-ward-pt','sel-ward-poscomp','sel-ward-history'].forEach(id => {
+  ['sel-ward-b','sel-ward-pos','sel-ward-dc','sel-ward-dct','sel-ward-inf','sel-ward-donut','sel-ward-pt','sel-ward-poscomp','sel-ward-history','sel-ward-wardcomp'].forEach(id => {
     const el = document.getElementById(id);
     if(!el) return;
     const cur = el.value;
@@ -657,18 +660,11 @@ function renderAll() {
 // ==================== PENDING WARDS ALERT ====================
 function renderPendingWards() {
   const pSel = document.getElementById('sel-period-pending')?.value || 'today';
-  
-  // 1. กรองข้อมูลเฉพาะช่วงเวลาที่เลือก
   const filteredData = filterByTime(DB.bundle, pSel);
-  
-  // 2. ดึงรายชื่อตึกที่ "มีการประเมิน" ในช่วงเวลานั้น
   const assessedWards = new Set(filteredData.map(r => r.ward).filter(w => w && w !== '?' && w.trim() !== ''));
-  
-  // 3. หาตึกที่ "หายไป"
   const missingWards = ALL_MDH_WARDS.filter(w => !assessedWards.has(w));
   const container = document.getElementById('pending-wards-list');
   
-  // สร้าง Label เวลาให้ดูสวยงาม
   let periodLabel = "วันนี้";
   if(pSel==='week') periodLabel="สัปดาห์นี้";
   if(pSel==='month') periodLabel="เดือนนี้";
@@ -703,13 +699,12 @@ function renderBundleKPI() {
 function renderBundleTrend() {
   const bSel = document.getElementById('sel-bundle')?.value||'all';
   const wSel = document.getElementById('sel-ward-b')?.value||'all';
-  const pFilter = document.getElementById('sel-filter-period-b')?.value||'all'; // กรองเวลา
-  const pGroup = document.getElementById('sel-groupby-b')?.value||'week'; // แกน X
+  const pFilter = document.getElementById('sel-filter-period-b')?.value||'all'; 
+  const pGroup = document.getElementById('sel-groupby-b')?.value||'week'; 
 
   let rows = DB.bundle;
   if(bSel!=='all') rows = rows.filter(r=>r.bundleType===bSel.toUpperCase());
   
-  // กรองข้อมูลตามช่วงเวลาที่เลือก (เช่น เฉพาะเดือนที่แล้ว)
   rows = filterByTime(rows, pFilter);
 
   let allWards = [];
@@ -722,11 +717,29 @@ function renderBundleTrend() {
   }
 
   const timeMap = new Map();
+
+  // 🚀 บังคับสร้างวันที่ 1-31 ถ้าเลือกดูแบบรายเดือนและกรุ๊ปรายวัน
+  const now = new Date();
+  if (pGroup === 'day' && (pFilter === 'month' || pFilter === 'last_month')) {
+      let m = pFilter === 'month' ? now.getMonth() : now.getMonth() - 1;
+      let y = now.getFullYear();
+      if (m < 0) { m = 11; y--; }
+      let daysInMonth = new Date(y, m + 1, 0).getDate();
+      for(let d=1; d<=daysInMonth; d++) {
+          let td = new Date(y, m, d);
+          let info = getPeriodInfo(td, pGroup);
+          timeMap.set(info.sortKey, info.label);
+      }
+  }
+
   rows.forEach(r => {
-     const info = getPeriodInfo(r.timestamp, pGroup); // แบ่งกลุ่มแกน X
+     const info = getPeriodInfo(r.timestamp, pGroup);
      timeMap.set(info.sortKey, info.label);
   });
-  const sortedKeys = Array.from(timeMap.keys()).sort().slice(-20);
+  
+  // เรียงวันที่ตามลำดับ
+  let sortedKeys = Array.from(timeMap.keys()).sort();
+  if(pGroup !== 'day' || pFilter === 'all') sortedKeys = sortedKeys.slice(-31); // ตัดให้พอดีจอถ้าดูทั้งหมด
   const labels = sortedKeys.map(k => timeMap.get(k));
 
   const datasets = allWards.map((w, i) => {
@@ -758,29 +771,35 @@ function renderBundleTrend() {
 
 function renderWardComp() {
   const bSel = document.getElementById('sel-bundle-ward')?.value||'all';
+  const wSel = document.getElementById('sel-ward-wardcomp')?.value||'all';
   const pSel = document.getElementById('sel-period-ward')?.value||'all';
   
   let rows = DB.bundle;
   if(bSel!=='all') rows = rows.filter(r=>r.bundleType===bSel.toUpperCase());
-  rows = filterByTime(rows, pSel); // กรองเวลา
+  if(wSel!=='all') rows = rows.filter(r=>r.ward===wSel);
+  rows = filterByTime(rows, pSel); 
 
   const wardMap = groupBy(rows, 'ward');
   
-  // สร้างรายชื่อหน่วยงานที่ "ไม่ได้ประเมิน" สำหรับโชว์ใต้กราฟ
   const assessedWards = new Set(Object.keys(wardMap).filter(w => w !== '?' && w !== 'undefined' && w.trim() !== ''));
-  const missingWards = ALL_MDH_WARDS.filter(w => !assessedWards.has(w));
+  let missingWards = [];
+  if (wSel !== 'all') {
+      if (!assessedWards.has(wSel)) missingWards = [wSel];
+  } else {
+      missingWards = ALL_MDH_WARDS.filter(w => !assessedWards.has(w));
+  }
+  
   const missingContainer = document.getElementById('missing-wards-wardcomp');
   if (missingContainer) {
       if (missingWards.length === 0) {
-          missingContainer.innerHTML = `<span style="color: var(--green); font-size: 0.75rem;"><i class="fa-solid fa-check"></i> ประเมินครบทุกหน่วยงาน</span>`;
+          missingContainer.innerHTML = `<span style="color: var(--green); font-size: 0.75rem;"><i class="fa-solid fa-check"></i> ประเมินครบตามตัวกรอง</span>`;
       } else {
           missingContainer.innerHTML = missingWards.map(w => `<span style="background: rgba(244,63,94,0.1); color: #fb7185; border: 1px solid rgba(244,63,94,0.3); padding: 2px 8px; border-radius: 12px; font-size: 0.68rem;">${w}</span>`).join('');
       }
   }
 
-  // เรียงลำดับตึกที่ประเมินมากที่สุดขึ้นก่อน (Ranking)
   const sortedWards = Object.keys(wardMap).sort((a,b) => wardMap[b].length - wardMap[a].length);
-  const labels = sortedWards.slice(0,15); // เอา 15 อันดับแรก
+  const labels = sortedWards.slice(0,15); 
   const data = labels.map(w => calcCompliance(wardMap[w]).pct??0);
   const colors = data.map(p=>pctColor(p));
   
@@ -797,7 +816,7 @@ function renderPositionChart() {
   
   let rows = DB.bundle;
   if(wSel!=='all') rows = rows.filter(r=>r.ward===wSel);
-  rows = filterByTime(rows, pSel); // กรองเวลา
+  rows = filterByTime(rows, pSel);
 
   const posMap = groupBy(rows, 'position');
   const labels = Object.keys(posMap);
@@ -818,7 +837,7 @@ function renderPositionCompliance() {
   let rows = DB.bundle;
   if(bSel !== 'all') rows = rows.filter(r => r.bundleType === bSel.toUpperCase());
   if(wSel !== 'all') rows = rows.filter(r => r.ward === wSel);
-  rows = filterByTime(rows, pSel); // กรองเวลา
+  rows = filterByTime(rows, pSel);
 
   const posMap = groupBy(rows, 'position');
   let posData = Object.keys(posMap).map(pos => {
@@ -852,11 +871,8 @@ function renderBundleTable() {
   
   let rows = DB.bundle;
   if(wSel !== 'all') rows = rows.filter(r => r.ward === wSel);
-  
-  // กรองเวลา
   rows = filterByTime(rows, pSel);
-
-  rows = [...rows].reverse().slice(0,50); // ดึงล่าสุด 50 รายการหลังจากกรองแล้ว
+  rows = [...rows].reverse().slice(0,50); 
   
   if(!rows.length){ document.getElementById('tbl-bundle').innerHTML='<div class="empty">ยังไม่มีข้อมูลในข่วงเวลานี้</div>'; return; }
   
