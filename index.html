@@ -49,6 +49,8 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .sec-hdr.amber::before{background:linear-gradient(135deg,var(--amber),#ef4444)}
 .sec-hdr.rose{background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.2)}
 .sec-hdr.rose::before{background:linear-gradient(135deg,var(--rose),var(--purple))}
+.sec-hdr.purple{background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.2)}
+.sec-hdr.purple::before{background:linear-gradient(135deg,var(--purple),var(--blue))}
 .sec-hdr-icon{font-size:1.6rem;line-height:1}
 .sec-hdr-text h2{font-size:1.1rem;font-weight:700;color:var(--text)}
 .sec-hdr-text p{font-size:.72rem;color:var(--muted);font-family:var(--mono);margin-top:2px}
@@ -126,6 +128,24 @@ tr:hover td{background:rgba(0,201,167,.04)}
 .pt-row{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:8px}
 .pt-item label{font-size:.65rem;color:var(--muted);font-family:var(--mono);text-transform:uppercase;display:block;margin-bottom:2px}
 .pt-item span{font-size:.9rem;font-weight:600;color:var(--teal2)}
+
+/* PRINT CSS สำหรับเสกหน้า PDF */
+@media print {
+  body { background: #ffffff !important; color: #000000 !important; }
+  header, .tabs, .sec-hdr, .ctrl, .kpi-grid, #page-bundle, #page-icn, #page-surv { display: none !important; }
+  #page-report { display: block !important; }
+  .wrap { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+  .card { border: none !important; background: transparent !important; padding: 0 !important; box-shadow: none !important; }
+  .card-title { color: #000 !important; font-size: 1.4rem !important; margin-bottom: 5px !important; }
+  .card-sub { color: #555 !important; font-size: 0.9rem !important; margin-bottom: 20px !important; }
+  table { border-collapse: collapse; width: 100%; border: 1px solid #d1d5db !important; }
+  th { background: #f1f5f9 !important; color: #111827 !important; border: 1px solid #d1d5db !important; padding: 10px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 0.85rem !important;}
+  td { border: 1px solid #e5e7eb !important; color: #111827 !important; padding: 10px !important; font-size: 0.85rem !important; }
+  .empty { color: #000 !important; }
+  .dot { display: none !important; }
+  span[style*="color"] { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  div[style*="background"] { -webkit-print-color-adjust: exact; print-color-adjust: exact; border: none !important; }
+}
 </style>
 </head>
 <body>
@@ -155,6 +175,7 @@ tr:hover td{background:rgba(0,201,167,.04)}
   <button class="tab active" onclick="sw('bundle')">📊 Bundle Dashboard</button>
   <button class="tab" onclick="sw('icn')">🎯 ICN Command</button>
   <button class="tab" onclick="sw('surv')">🏥 Surveillance</button>
+  <button class="tab" onclick="sw('report')" style="border:1px solid rgba(168,85,247,0.4); color:#d8b4fe;">📑 Executive Report</button>
 </div>
 
 <div class="page active" id="page-bundle">
@@ -438,13 +459,50 @@ tr:hover td{background:rgba(0,201,167,.04)}
   </div>
 </div>
 
-</div><script>
+<div class="page" id="page-report">
+  <div class="sec-hdr purple">
+    <div class="sec-hdr-icon">📑</div>
+    <div class="sec-hdr-text">
+      <h2>Executive Summary Report</h2>
+      <p>ระบบสร้างรายงานผู้บริหารอัตโนมัติ (Automated Matrix Report)</p>
+    </div>
+  </div>
+
+  <div class="card" style="border: 1px solid rgba(168,85,247,0.3);">
+    <div class="card-hdr" style="margin-bottom: 20px;">
+      <div>
+        <div class="card-title" style="font-size: 1.1rem; color: #d8b4fe;"><span class="dot" style="background:var(--purple)"></span>📊 รายงานสรุปผลการปฏิบัติตามมาตรฐานรายเดือน</div>
+        <div class="card-sub" style="font-size: 0.8rem; margin-top: 4px;">สรุปเปอร์เซ็นต์ความสอดคล้องภาพรวม และแยกตามประเภท Bundle ทุกหน่วยงาน ประจำ <span id="report-title-label" style="font-weight:bold; color:#fff;">--</span></div>
+      </div>
+      <div class="ctrl">
+        <select class="mini" id="sel-period-report" onchange="renderExecutiveReport()" style="font-size: 0.85rem; padding: 6px 12px;">
+          <option value="last_month" selected>เดือนที่แล้ว</option>
+          <option value="month">เดือนนี้</option>
+          <option value="week">สัปดาห์นี้</option>
+          <option value="year">ปีนี้</option>
+          <option value="all">ทั้งหมด</option>
+        </select>
+        <button class="btn-ref" onclick="window.print()" style="background: linear-gradient(135deg, #a855f7, #3b82f6); color: #fff; font-size: 0.85rem; font-weight: bold; border: none; padding: 7px 16px;">
+          🖨️ พิมพ์รายงาน / Save PDF
+        </button>
+      </div>
+    </div>
+    
+    <div class="tbl-wrap" id="tbl-report-content">
+      <div class="loading"><div class="spin"></div></div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
 const API = 'https://script.google.com/macros/s/AKfycbwYYomUMt7OcyNy5mfpLSbGH-UG3oSq2nIXLrQllaXjv83oBEfWQWeIwOIptbNaF4dgEQ/exec';
 let DB = { bundle:[], daily:[], patient:[] };
 let CH = {};
 const COLORS = ['#00c9a7','#3b82f6','#f59e0b','#f43f5e','#a855f7','#22c55e','#fb923c','#e879f9','#38bdf8','#4ade80'];
 
-// Master List ทุกตึกของมุกดาหาร
+// Master List ทุกตึก
 const ALL_MDH_WARDS = [
   "อายุรกรรมชาย1", "อายุรกรรมหญิง1", "ศัลยกรรมชาย", "ศัลยกรรมหญิง", "ตา หู คอ จมูก", 
   "พิเศษ2", "พิเศษ3", "พิเศษ4", "MICU1", "กุมารเวชกรรม", "ทารกแรกเกิดป่วย", 
@@ -455,7 +513,6 @@ const ALL_MDH_WARDS = [
   "อุบัติเหตุฉุกเฉิน", "OPD ชั้น 1", "OPD ชั้น 2", "การพยาบาลชุมชน", "งานเวชกรรมสังคม"
 ];
 
-// ===== FETCH =====
 async function fetchSheet(sheet) {
   try {
     const r = await fetch(`${API}?api=true&sheet=${sheet}`);
@@ -474,7 +531,6 @@ async function loadAll() {
   DB.bundle = b; DB.daily = d; DB.patient = p;
   
   normalizeData();
-
   document.getElementById('upd').textContent = 'อัปเดต: ' + new Date().toLocaleTimeString('th-TH');
   populateDropdowns();
   renderAll();
@@ -488,149 +544,78 @@ function safeDate(v) {
   if (str.includes('/')) { 
     let parts = str.split(/[\s,T]+/)[0].split('/');
     if (parts.length === 3) {
-      let d = parseInt(parts[0], 10);
-      let m = parseInt(parts[1], 10) - 1;
-      let y = parseInt(parts[2], 10);
-      if (y > 2500) y -= 543;
-      else if (y < 100) y += 2000;
-      let pDate = new Date(y, m, d);
-      if (!isNaN(pDate)) return pDate;
+      let d = parseInt(parts[0], 10); let m = parseInt(parts[1], 10) - 1; let y = parseInt(parts[2], 10);
+      if (y > 2500) y -= 543; else if (y < 100) y += 2000;
+      let pDate = new Date(y, m, d); if (!isNaN(pDate)) return pDate;
     }
   }
-  let fallback = new Date(str);
-  return isNaN(fallback) ? new Date() : fallback;
+  let fallback = new Date(str); return isNaN(fallback) ? new Date() : fallback;
 }
 
 function normalizeData() {
   DB.patient.forEach(r => {
-    r.hn = String(r['HN'] || r.hn || '').trim();
-    r.an = String(r['AN'] || r.an || '').trim();
-    r.patientName = r['Patient Name'] || r['ชื่อ-สกุล'] || r.patientName || '';
-    r.age = r['Age'] || r['อายุ'] || r.age || '';
-    r.diagnosis = r['Diagnosis'] || r['การวินิจฉัย'] || r.diagnosis || '';
-    r.admitDate = safeDate(r['Admit Date'] || r['วันที่รับไว้'] || r.Timestamp || r.timestamp);
-    r.infectionStatus = r['Infection Status'] || r['มีการติดเชื้อ'] || r.infectionStatus || '';
-    r.infectionSystem = r['Infection System'] || r['ระบบที่ติดเชื้อ'] || r.infectionSystem || '';
-    r.status = r['Status'] || r['สถานะ'] || r.status || 'กำลังรักษา';
+    r.hn = String(r['HN'] || r.hn || '').trim(); r.an = String(r['AN'] || r.an || '').trim();
+    r.patientName = r['Patient Name'] || r['ชื่อ-สกุล'] || ''; r.age = r['Age'] || r['อายุ'] || '';
+    r.diagnosis = r['Diagnosis'] || r['การวินิจฉัย'] || ''; r.admitDate = safeDate(r['Admit Date'] || r['วันที่รับไว้'] || r.Timestamp);
+    r.infectionStatus = r['Infection Status'] || r['มีการติดเชื้อ'] || ''; r.infectionSystem = r['Infection System'] || r['ระบบที่ติดเชื้อ'] || '';
+    r.status = r['Status'] || r['สถานะ'] || 'กำลังรักษา';
   });
-
   DB.daily.forEach(r => {
-    r.hn = String(r['HN'] || r.hn || '').trim();
-    let pt = DB.patient.find(p => p.hn === r.hn);
-    r.an = pt ? pt.an : (r['AN'] || r.an || '');
-    r.ward = r['หน่วยงาน'] || r['Ward'] || r.ward || '';
+    r.hn = String(r['HN'] || r.hn || '').trim(); let pt = DB.patient.find(p => p.hn === r.hn);
+    r.an = pt ? pt.an : (r['AN'] || r.an || ''); r.ward = r['หน่วยงาน'] || r['Ward'] || '';
     r.record_date = safeDate(r['วันที่ประเมิน'] || r['Timestamp'] || r.record_date);
-    r.bt = r['Temp'] || r.bt || '';
-    r.bp = r['BP'] || r.bp || '';
-    r.pr = r['PR'] || r.pr || '';
-    r.rr = r['RR'] || r.rr || '';
-    r.o2sat = r['O2 Sat'] || r.o2sat || '';
-    
-    let vent = String(r['เครื่องช่วยหายใจ'] || r.device_vent || '').toLowerCase();
-    r.device_vent = vent.includes('on') || vent === 'true';
-    let fc = String(r['สายสวนปัสสาวะ'] || r.device_fc || '').toLowerCase();
-    r.device_fc = fc.includes('on') || fc === 'true';
-    let cline = String(r['Central Line'] || r.device_cline || '').toLowerCase();
-    r.device_cline = cline.includes('on') || cline === 'true';
-    let iv = String(r['สายน้ำเกลือ'] || r.device_iv || '').toLowerCase();
-    r.device_iv = iv.includes('on') || iv === 'true';
-    
-    r.culture_result = r['Culture Result'] || r.culture_result || '';
-    r.lab_cbc = r['WBC'] || r.lab_cbc || '';
-    r.daily_note = r['Note อาการเพิ่มเติม'] || r.daily_note || '';
+    r.bt = r['Temp'] || r.bt || ''; r.bp = r['BP'] || ''; r.pr = r['PR'] || ''; r.rr = r['RR'] || ''; r.o2sat = r['O2 Sat'] || '';
+    r.device_vent = String(r['เครื่องช่วยหายใจ'] || '').toLowerCase().includes('on'); r.device_fc = String(r['สายสวนปัสสาวะ'] || '').toLowerCase().includes('on');
+    r.device_cline = String(r['Central Line'] || '').toLowerCase().includes('on'); r.device_iv = String(r['สายน้ำเกลือ'] || '').toLowerCase().includes('on');
+    r.culture_result = r['Culture Result'] || ''; r.lab_cbc = r['WBC'] || ''; r.daily_note = r['Note อาการเพิ่มเติม'] || '';
   });
-
-  DB.patient.forEach(p => {
-    let cues = DB.daily.filter(d => d.hn === p.hn);
-    p.ward = cues.length > 0 ? cues[cues.length - 1].ward : 'ไม่ระบุ';
-  });
-
+  DB.patient.forEach(p => { let cues = DB.daily.filter(d => d.hn === p.hn); p.ward = cues.length > 0 ? cues[cues.length - 1].ward : 'ไม่ระบุ'; });
   DB.bundle.forEach(r => {
-    r.timestamp = safeDate(r['Timestamp'] || r.Timestamp);
-    r.ward = r['Ward'] || r['หน่วยงาน'] || r.ward || '';
-    r.position = r['Position'] || r['ตำแหน่ง'] || r.position || '';
-    r.bundleType = String(r['Bundle_Type'] || r.bundleType || '').toUpperCase();
+    r.timestamp = safeDate(r['Timestamp'] || r.Timestamp); r.ward = r['Ward'] || r['หน่วยงาน'] || '';
+    r.position = r['Position'] || r['ตำแหน่ง'] || ''; r.bundleType = String(r['Bundle_Type'] || r.bundleType || '').toUpperCase();
   });
 }
 
-// Helper Function: กรองข้อมูลตามช่วงเวลา
 function filterByTime(rows, period) {
   if(!period || period === 'all') return rows;
-  const now = new Date();
-  const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(); 
-  
+  const now = new Date(); const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(); 
   return rows.filter(r => {
-    const d = new Date(r.timestamp);
-    const dt = d.getTime();
-    
-    if(period === 'today') {
-      return d.toDateString() === now.toDateString();
-    }
-    if(period === 'week') {
-      const day = now.getDay();
-      const startOfWeek = t0 - (day * 86400000); 
-      return dt >= startOfWeek;
-    }
-    if(period === 'month') {
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    }
+    const d = new Date(r.timestamp); const dt = d.getTime();
+    if(period === 'today') return d.toDateString() === now.toDateString();
+    if(period === 'week') return dt >= (t0 - (now.getDay() * 86400000));
+    if(period === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     if(period === 'last_month') {
-      let lastMonth = now.getMonth() - 1;
-      let year = now.getFullYear();
+      let lastMonth = now.getMonth() - 1; let year = now.getFullYear();
       if (lastMonth < 0) { lastMonth = 11; year--; }
       return d.getMonth() === lastMonth && d.getFullYear() === year;
     }
-    if(period === 'year') {
-      return d.getFullYear() === now.getFullYear();
-    }
+    if(period === 'year') return d.getFullYear() === now.getFullYear();
     return true;
   });
 }
 
 function getPeriodInfo(dateObj, period) {
-  const d = new Date(dateObj);
-  let sortKey = '', label = '';
-  if(period === 'day') {
-    sortKey = d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
-    label = d.toLocaleDateString('th-TH',{day:'numeric',month:'short'});
-  } else if(period === 'week') {
-    const w = new Date(d); w.setDate(d.getDate()-d.getDay());
-    sortKey = w.getFullYear() + String(w.getMonth()+1).padStart(2,'0') + String(w.getDate()).padStart(2,'0');
-    label = 'สัปดาห์ ' + w.toLocaleDateString('th-TH',{day:'numeric',month:'short'});
-  } else if(period === 'year') {
-    sortKey = d.getFullYear().toString();
-    label = (d.getFullYear() + 543).toString();
-  } else { 
-    sortKey = d.getFullYear() + String(d.getMonth()+1).padStart(2,'0');
-    label = d.toLocaleDateString('th-TH',{month:'short', year:'2-digit'});
-  }
+  const d = new Date(dateObj); let sortKey = '', label = '';
+  if(period === 'day') { sortKey = d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0'); label = d.toLocaleDateString('th-TH',{day:'numeric',month:'short'}); }
+  else if(period === 'week') { const w = new Date(d); w.setDate(d.getDate()-d.getDay()); sortKey = w.getFullYear() + String(w.getMonth()+1).padStart(2,'0') + String(w.getDate()).padStart(2,'0'); label = 'สัปดาห์ ' + w.toLocaleDateString('th-TH',{day:'numeric',month:'short'}); }
+  else if(period === 'year') { sortKey = d.getFullYear().toString(); label = (d.getFullYear() + 543).toString(); }
+  else { sortKey = d.getFullYear() + String(d.getMonth()+1).padStart(2,'0'); label = d.toLocaleDateString('th-TH',{month:'short', year:'2-digit'}); }
   return { sortKey, label };
 }
 
 function populateDropdowns() {
   const wards = [...new Set([...DB.bundle.map(r=>r.ward), ...DB.daily.map(r=>r.ward), ...DB.patient.map(r=>r.ward)])].filter(Boolean).sort();
   ['sel-ward-b','sel-ward-pos','sel-ward-dc','sel-ward-dct','sel-ward-inf','sel-ward-donut','sel-ward-pt','sel-ward-poscomp','sel-ward-history','sel-ward-wardcomp'].forEach(id => {
-    const el = document.getElementById(id);
-    if(!el) return;
-    const cur = el.value;
+    const el = document.getElementById(id); if(!el) return; const cur = el.value;
     el.innerHTML = '<option value="all">ทุก Ward</option>';
     wards.forEach(w => el.insertAdjacentHTML('beforeend', `<option value="${w}">${w}</option>`));
     if(cur) el.value = cur;
-  });
-  
-  const bundles = ['sel-bundle','sel-bundle-ward','sel-bundle-poscomp'];
-  bundles.forEach(id => {
-    const el = document.getElementById(id);
-    if(el) {
-      const cur = el.value;
-      el.innerHTML='<option value="all">ทุก Bundle</option><option value="VAP">VAP</option><option value="CAUTI">CAUTI</option><option value="CLABSI">CLABSI</option><option value="SSI">SSI</option><option value="เชื้อดื้อยา">MDR</option><option value="HAND HYGIENE">Hand Hygiene</option>';
-      if(cur) el.value = cur;
-    }
   });
 }
 
 function pct(y, n) { return (y+n)>0 ? Math.round(y/(y+n)*100) : null; }
 function pctColor(p) { return p>=80?'#22c55e':p>=60?'#f59e0b':'#f43f5e'; }
+function pctPrintColor(p) { return p>=80?'#16a34a':p>=60?'#d97706':'#e11d48'; }
 function fmtDate(v) { return !v ? '-' : safeDate(v).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}); }
 function groupBy(arr, key) { return arr.reduce((a,r) => { const k=r[key]||'?'; (a[k]=a[k]||[]).push(r); return a; }, {}); }
 function calcCompliance(rows) {
@@ -646,7 +631,7 @@ function calcCompliance(rows) {
 function destroyChart(id) { if(CH[id]){CH[id].destroy();delete CH[id];} }
 
 function sw(tab) {
-  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['bundle','icn','surv'][i]===tab));
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['bundle','icn','surv','report'][i]===tab));
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+tab).classList.add('active');
 }
@@ -655,28 +640,81 @@ function renderAll() {
   renderBundleKPI(); renderPendingWards(); renderBundleTrend(); renderWardComp(); renderPositionChart(); renderPositionCompliance(); renderBundleTable();
   renderICNKPI(); renderDCTrend(); renderDeviceChart(); renderDCTable();
   renderSurvKPI(); renderInfTrend(); renderDonut(); renderPatientTable();
+  renderExecutiveReport(); // Render หน้าใหม่ล่าสุด
 }
 
-// ==================== PENDING WARDS ALERT ====================
-function renderPendingWards() {
-  const pSel = document.getElementById('sel-period-pending')?.value || 'today';
-  const filteredData = filterByTime(DB.bundle, pSel);
-  const assessedWards = new Set(filteredData.map(r => r.ward).filter(w => w && w !== '?' && w.trim() !== ''));
-  const missingWards = ALL_MDH_WARDS.filter(w => !assessedWards.has(w));
-  const container = document.getElementById('pending-wards-list');
+// ==================== EXECUTIVE REPORT (หน้าใหม่สุดอลังการ) ====================
+function renderExecutiveReport() {
+  const pSel = document.getElementById('sel-period-report')?.value || 'last_month';
+  const rows = filterByTime(DB.bundle, pSel);
+  const bundles = ['VAP', 'CAUTI', 'CLABSI', 'SSI', 'เชื้อดื้อยา', 'HAND HYGIENE'];
   
-  let periodLabel = "วันนี้";
-  if(pSel==='week') periodLabel="สัปดาห์นี้";
-  if(pSel==='month') periodLabel="เดือนนี้";
-  if(pSel==='last_month') periodLabel="เดือนที่แล้ว";
-  if(pSel==='year') periodLabel="ปีนี้";
-  if(pSel==='all') periodLabel="ทั้งหมด";
+  const selEl = document.getElementById('sel-period-report');
+  document.getElementById('report-title-label').textContent = selEl.options[selEl.selectedIndex].text;
 
-  if (missingWards.length === 0) {
-    container.innerHTML = `<span style="color: var(--green); font-size: 0.9rem; font-weight: 600;"><i class="fa-solid fa-check-circle"></i> 🎉 ยอดเยี่ยม! ทุกหน่วยงานส่งข้อมูลประเมินครบแล้วสำหรับ${periodLabel}</span>`;
-  } else {
-    container.innerHTML = missingWards.map(w => `<span style="background: rgba(244,63,94,0.15); color: #fb7185; border: 1px solid rgba(244,63,94,0.4); padding: 5px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 500;">${w}</span>`).join('');
+  let html = `<table style="width:100%; border-collapse:collapse; text-align:center;">
+    <thead>
+      <tr>
+        <th style="text-align:left; font-size:0.8rem;">หน่วยงาน</th>
+        <th style="background:rgba(0,201,167,0.1); color:var(--teal2); font-size:0.8rem;">Overall %</th>
+        ${bundles.map(b => `<th style="font-size:0.8rem;">${b==='เชื้อดื้อยา'?'MDR':b}</th>`).join('')}
+      </tr>
+    </thead>
+    <tbody>`;
+  
+  const grouped = groupBy(rows, 'ward');
+  const sortedWards = Object.keys(grouped).filter(w => w !== '?' && w !== 'undefined' && w.trim() !== '').sort((a,b) => grouped[b].length - grouped[a].length);
+
+  if(sortedWards.length === 0) {
+     document.getElementById('tbl-report-content').innerHTML = '<div class="empty" style="color:#000;">ไม่มีข้อมูลประเมินในช่วงเวลาที่เลือก</div>';
+     return;
   }
+
+  sortedWards.forEach(w => {
+    const wRows = grouped[w];
+    const overall = calcCompliance(wRows).pct;
+    
+    let colsHtml = '';
+    bundles.forEach(b => {
+       const bRows = wRows.filter(r => r.bundleType === b.toUpperCase());
+       const { pct: bpct } = calcCompliance(bRows);
+       let badge = '-';
+       if(bpct !== null) {
+          const c = pctPrintColor(bpct); 
+          badge = `<span style="color:${c}; font-weight:bold; -webkit-print-color-adjust:exact; print-color-adjust:exact;">${bpct}%</span>`;
+       }
+       colsHtml += `<td>${badge}</td>`;
+    });
+    
+    const ovColor = pctPrintColor(overall);
+    
+    html += `<tr>
+      <td style="text-align:left; font-weight:500;">${w} <br><span style="font-size:0.65rem; color:var(--muted); font-family:var(--mono);">(${wRows.length} การประเมิน)</span></td>
+      <td style="background:rgba(255,255,255,0.02);"><span style="color:${ovColor}; font-size:1.1em; font-weight:bold; -webkit-print-color-adjust:exact; print-color-adjust:exact;">${overall}%</span></td>
+      ${colsHtml}
+    </tr>`;
+  });
+  
+  html += `</tbody></table>`;
+  
+  // สร้างโซน "ตึกที่อู้ไม่ทำงาน"
+  const assessedWards = new Set(sortedWards);
+  const missingWards = ALL_MDH_WARDS.filter(w => !assessedWards.has(w));
+  
+  let missingHtml = `<div style="margin-top:24px; padding:16px; border:1px dashed #ef4444; border-radius:12px; background:rgba(239,68,68,0.03);">
+    <div style="color:#ef4444; margin-bottom:12px; font-size:0.9rem; font-weight:bold;">🚨 หน่วยงานที่ไม่มีการประเมินเลย (${missingWards.length} ตึก)</div>
+    <div style="display:flex; flex-wrap:wrap; gap:6px;">`;
+    
+  if(missingWards.length === 0) {
+      missingHtml += `<span style="color:#10b981; font-size:0.85rem; font-weight:bold;"><i class="fa-solid fa-check"></i> ประเมินครบทุกหน่วยงานในโรงพยาบาล</span>`;
+  } else {
+      missingWards.forEach(w => {
+          missingHtml += `<span style="background:rgba(239,68,68,0.1); color:#ef4444; padding:4px 10px; border-radius:12px; font-size:0.75rem; border:1px solid rgba(239,68,68,0.3); -webkit-print-color-adjust:exact; print-color-adjust:exact;">${w}</span>`;
+      });
+  }
+  missingHtml += `</div></div>`;
+  
+  document.getElementById('tbl-report-content').innerHTML = html + missingHtml;
 }
 
 // ==================== BUNDLE ====================
@@ -718,7 +756,6 @@ function renderBundleTrend() {
 
   const timeMap = new Map();
 
-  // 🚀 บังคับสร้างวันที่ 1-31 ถ้าเลือกดูแบบรายเดือนและกรุ๊ปรายวัน
   const now = new Date();
   if (pGroup === 'day' && (pFilter === 'month' || pFilter === 'last_month')) {
       let m = pFilter === 'month' ? now.getMonth() : now.getMonth() - 1;
@@ -737,9 +774,8 @@ function renderBundleTrend() {
      timeMap.set(info.sortKey, info.label);
   });
   
-  // เรียงวันที่ตามลำดับ
   let sortedKeys = Array.from(timeMap.keys()).sort();
-  if(pGroup !== 'day' || pFilter === 'all') sortedKeys = sortedKeys.slice(-31); // ตัดให้พอดีจอถ้าดูทั้งหมด
+  if(pGroup !== 'day' || pFilter === 'all') sortedKeys = sortedKeys.slice(-31);
   const labels = sortedKeys.map(k => timeMap.get(k));
 
   const datasets = allWards.map((w, i) => {
@@ -863,6 +899,27 @@ function renderPositionCompliance() {
       }
     }
   });
+}
+
+function renderPendingWards() {
+  const pSel = document.getElementById('sel-period-pending')?.value || 'today';
+  const filteredData = filterByTime(DB.bundle, pSel);
+  const assessedWards = new Set(filteredData.map(r => r.ward).filter(w => w && w !== '?' && w.trim() !== ''));
+  const missingWards = ALL_MDH_WARDS.filter(w => !assessedWards.has(w));
+  const container = document.getElementById('pending-wards-list');
+  
+  let periodLabel = "วันนี้";
+  if(pSel==='week') periodLabel="สัปดาห์นี้";
+  if(pSel==='month') periodLabel="เดือนนี้";
+  if(pSel==='last_month') periodLabel="เดือนที่แล้ว";
+  if(pSel==='year') periodLabel="ปีนี้";
+  if(pSel==='all') periodLabel="ทั้งหมด";
+
+  if (missingWards.length === 0) {
+    container.innerHTML = `<span style="color: var(--green); font-size: 0.9rem; font-weight: 600;"><i class="fa-solid fa-check-circle"></i> 🎉 ยอดเยี่ยม! ทุกหน่วยงานส่งข้อมูลประเมินครบแล้วสำหรับ${periodLabel}</span>`;
+  } else {
+    container.innerHTML = missingWards.map(w => `<span style="background: rgba(244,63,94,0.15); color: #fb7185; border: 1px solid rgba(244,63,94,0.4); padding: 5px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 500;">${w}</span>`).join('');
+  }
 }
 
 function renderBundleTable() {
