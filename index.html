@@ -1882,10 +1882,6 @@ function printComplianceReport() {
   win.focus();
   setTimeout(() => win.print(), 500);
 }
-// ==================== SAFE PATCH V2: ANNUAL COMPLIANCE REPORT ====================
-// วิธีวาง: วางทับก้อน SAFE PATCH: COMPLIANCE REPORT PAGE เดิมทั้งหมด
-// หรือวางหลัง END SAFE PATCH เดิม และก่อน loadAll();
-// ห้ามใส่ <script> เพราะก้อนนี้ต้องอยู่ใน <script> เดิม
 
 function annualCompInjectStyle() {
   if (document.getElementById('annual-comp-style')) return;
@@ -2431,8 +2427,6 @@ try {
 } catch (e) {
   console.error('Annual Compliance init error:', e);
 }
-// ==================== END SAFE PATCH V2: ANNUAL COMPLIANCE REPORT ====================
-
   
 loadAll().catch(e => {
   console.error('loadAll fatal:', e);
