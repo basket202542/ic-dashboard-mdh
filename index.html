@@ -744,7 +744,6 @@ function renderAll() {
   renderSurvKPI(); renderInfTrend(); renderDonut(); renderPatientTable();
   initExecutiveReportFilters();
 }
-
 // ==================== EXECUTIVE REPORT ====================
 const REPORT_BUNDLES = ['VAP', 'CAUTI', 'CLABSI', 'SSI', 'เชื้อดื้อยา', 'HAND HYGIENE'];
 
@@ -925,6 +924,61 @@ function getQuestionStats(rows, bundleType) {
   return items;
 }
 
+function getRowsCompliancePercent(rows) {
+  let y = 0, n = 0;
+
+  rows.forEach(r => {
+    const bundleType = normalizeBundleType(r.bundleType);
+    const maxQuestion = Math.max(16, (REPORT_QUESTION_LABELS[bundleType] || []).length);
+
+    for (let i = 1; i <= maxQuestion; i++) {
+      const ans = normalizeAnswer(r[`Q${i}`] || r[`q${i}`] || r[`ข้อ${i}`]);
+      if (ans === 'Y') y++;
+      if (ans === 'N') n++;
+    }
+  });
+
+  return y + n > 0 ? Math.round((y / (y + n)) * 1000) / 10 : null;
+}
+
+function formatPercent(p) {
+  if (p === null || p === undefined || isNaN(p)) return 'N/A';
+  return `${Number(p) % 1 === 0 ? Number(p).toFixed(0) : Number(p).toFixed(1)}%`;
+}
+
+function ensureExecutiveOverviewStyles() {
+  if (document.getElementById('executive-overview-style')) return;
+
+  const style = document.createElement('style');
+  style.id = 'executive-overview-style';
+  style.innerHTML = `
+    .overview-page{max-width:1050px;margin:0 auto 34px;background:#fff;color:#111827;page-break-after:always;break-after:page;}
+    .overview-title{text-align:center;font-size:1.6rem;font-weight:900;color:#111827;margin-bottom:8px;line-height:1.25;}
+    .overview-sub{text-align:center;color:#334155;font-size:.92rem;margin-bottom:18px;}
+    .overview-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0 18px;}
+    .overview-kpi{border:1px solid #cbd5e1;border-radius:12px;padding:12px;background:#f8fafc;}
+    .overview-kpi-label{font-size:.72rem;color:#64748b;font-weight:800;margin-bottom:4px;}
+    .overview-kpi-value{font-size:1.25rem;color:#075985;font-weight:900;line-height:1.25;}
+    .overview-grid2{display:grid;grid-template-columns:1.1fr .9fr;gap:14px;margin-bottom:14px;}
+    .overview-block{border:1px solid #dbe3ee;border-radius:12px;overflow:hidden;background:#fff;}
+    .overview-block-title{background:#dbeaf7;color:#0f172a;font-weight:900;padding:10px 12px;border-bottom:1px solid #111827;}
+    .overview-table{width:100%;border-collapse:collapse;font-size:.82rem;}
+    .overview-table th{background:#eef6fd!important;color:#111827!important;border:1px solid #cbd5e1!important;padding:8px!important;text-align:left!important;font-family:var(--font)!important;font-size:.78rem!important;text-transform:none!important;letter-spacing:0!important;}
+    .overview-table td{border:1px solid #e2e8f0!important;padding:8px!important;color:#111827!important;white-space:normal!important;background:#fff!important;}
+    .overview-table td.num,.overview-table th.num{text-align:center!important;font-weight:800;}
+    .overview-pct-good{color:#16a34a;font-weight:900;}
+    .overview-pct-mid{color:#d97706;font-weight:900;}
+    .overview-pct-low{color:#e11d48;font-weight:900;}
+    .missing-box{padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px;}
+    .missing-chip{background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:999px;padding:4px 9px;font-size:.72rem;font-weight:800;}
+    .overview-note{font-size:.72rem;color:#64748b;margin-top:8px;text-align:right;}
+    @media(max-width:900px){.overview-kpis{grid-template-columns:1fr 1fr}.overview-grid2{grid-template-columns:1fr}}
+    @media print{.overview-page{padding:14mm 12mm!important;box-sizing:border-box!important}.overview-kpi,.overview-block,.missing-chip{page-break-inside:avoid!important;break-inside:avoid!important}}
+  `;
+
+  document.head.appendChild(style);
+}
+
 function ensureExecutiveDocButton() {
   const toolbar = document.querySelector('.report-toolbar');
   if (!toolbar || document.getElementById('btn-export-exec-doc')) return;
@@ -946,6 +1000,7 @@ function initExecutiveReportFilters() {
 
   if (!monthEl || !wardEl || !bundleEl) return;
 
+  ensureExecutiveOverviewStyles();
   ensureExecutiveDocButton();
 
   const rows = DB.bundle || [];
@@ -993,20 +1048,21 @@ function initExecutiveReportFilters() {
   renderExecutiveReport();
 }
 
-function getExecutiveTargets() {
-  const monthEl = document.getElementById('report-month-select');
-  const wardEl = document.getElementById('report-ward-select');
-  const bundleEl = document.getElementById('report-bundle-select');
-
-  const monthKey = monthEl?.value || '';
-  const wardValue = wardEl?.value || 'all';
-  const bundleValue = normalizeBundleType(bundleEl?.value || 'all');
+function getExecutiveScopeRows() {
+  const monthKey = document.getElementById('report-month-select')?.value || '';
+  const wardValue = document.getElementById('report-ward-select')?.value || 'all';
+  const bundleValue = normalizeBundleType(document.getElementById('report-bundle-select')?.value || 'all');
 
   let rows = (DB.bundle || []).filter(r => monthKeyFromDate(r.timestamp) === monthKey);
 
   if (wardValue !== 'all') rows = rows.filter(r => r.ward === wardValue);
   if (bundleValue !== 'all') rows = rows.filter(r => normalizeBundleType(r.bundleType) === bundleValue);
 
+  return rows;
+}
+
+function getExecutiveTargets() {
+  const rows = getExecutiveScopeRows();
   const map = new Map();
 
   rows.forEach(r => {
@@ -1016,10 +1072,7 @@ function getExecutiveTargets() {
 
     const key = `${ward}|||${bundleType}`;
 
-    if (!map.has(key)) {
-      map.set(key, { ward, bundleType, rows: [] });
-    }
-
+    if (!map.has(key)) map.set(key, { ward, bundleType, rows: [] });
     map.get(key).rows.push(r);
   });
 
@@ -1036,6 +1089,190 @@ function getExecutiveTargets() {
   });
 }
 
+function pctClass(p) {
+  if (p === null || p === undefined || isNaN(p)) return '';
+  if (p >= 90) return 'overview-pct-good';
+  if (p >= 80) return 'overview-pct-mid';
+  return 'overview-pct-low';
+}
+
+function groupRowsBy(rows, getter) {
+  const map = new Map();
+
+  rows.forEach(r => {
+    const key = getter(r) || 'ไม่ระบุ';
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(r);
+  });
+
+  return map;
+}
+
+function buildExecutiveOverviewPage(targets) {
+  const monthKey = document.getElementById('report-month-select')?.value || '';
+  const wardValue = document.getElementById('report-ward-select')?.value || 'all';
+  const bundleValue = normalizeBundleType(document.getElementById('report-bundle-select')?.value || 'all');
+  const scopeRows = getExecutiveScopeRows();
+
+  const wardMap = groupRowsBy(scopeRows, r => r.ward);
+  const bundleMap = groupRowsBy(scopeRows, r => normalizeBundleType(r.bundleType));
+
+  const wardMatrix = [...wardMap.entries()].map(([ward, rows]) => ({
+    ward,
+    count: rows.length,
+    percent: getRowsCompliancePercent(rows)
+  })).sort((a, b) => (b.percent ?? -1) - (a.percent ?? -1));
+
+  const bundleMatrix = [...bundleMap.entries()].map(([bundleType, rows]) => ({
+    bundleType,
+    count: rows.length,
+    percent: getRowsCompliancePercent(rows)
+  })).sort((a, b) => {
+    const ai = REPORT_BUNDLES.indexOf(a.bundleType);
+    const bi = REPORT_BUNDLES.indexOf(b.bundleType);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+
+  const weakItems = [...bundleMap.entries()].map(([bundleType, rows]) => {
+    const stats = getQuestionStats(rows, bundleType).filter(x => x.percent !== null);
+    const lowest = stats.sort((a, b) => a.percent - b.percent)[0];
+    return { bundleType, lowest };
+  }).filter(x => x.lowest).sort((a, b) => a.lowest.percent - b.lowest.percent);
+
+  const assessedWards = new Set(scopeRows.map(r => r.ward).filter(Boolean));
+  let missingWards = [];
+
+  if (wardValue === 'all') {
+    missingWards = ALL_MDH_WARDS.filter(w => !assessedWards.has(w));
+  } else if (!assessedWards.has(wardValue)) {
+    missingWards = [wardValue];
+  }
+
+  const overall = getRowsCompliancePercent(scopeRows);
+  const submittedWardCount = new Set(scopeRows.map(r => r.ward).filter(Boolean)).size;
+  const totalWards = wardValue === 'all' ? ALL_MDH_WARDS.length : 1;
+  const topWard = wardMatrix[0];
+  const lowestBundle = [...bundleMatrix].filter(x => x.percent !== null).sort((a, b) => a.percent - b.percent)[0];
+
+  const wardRowsHtml = wardMatrix.map(x => `
+    <tr>
+      <td>${escapeHTML(x.ward)}</td>
+      <td class="num">${x.count}</td>
+      <td class="num ${pctClass(x.percent)}">${formatPercent(x.percent)}</td>
+    </tr>
+  `).join('') || `<tr><td colspan="3" class="num">ไม่มีข้อมูล</td></tr>`;
+
+  const bundleRowsHtml = bundleMatrix.map(x => `
+    <tr>
+      <td>${escapeHTML(x.bundleType === 'เชื้อดื้อยา' ? 'MDR / เชื้อดื้อยา' : x.bundleType)}</td>
+      <td class="num">${x.count}</td>
+      <td class="num ${pctClass(x.percent)}">${formatPercent(x.percent)}</td>
+    </tr>
+  `).join('') || `<tr><td colspan="3" class="num">ไม่มีข้อมูล</td></tr>`;
+
+  const weakRowsHtml = weakItems.slice(0, 8).map(x => `
+    <tr>
+      <td>${escapeHTML(x.bundleType === 'เชื้อดื้อยา' ? 'MDR / เชื้อดื้อยา' : x.bundleType)}</td>
+      <td>${x.lowest.no}. ${escapeHTML(x.lowest.topic)}</td>
+      <td class="num ${pctClass(x.lowest.percent)}">${formatPercent(x.lowest.percent)}</td>
+    </tr>
+  `).join('') || `<tr><td colspan="3" class="num">ไม่มีข้อมูลหัวข้อที่ต่ำสุด</td></tr>`;
+
+  const missingHtml = missingWards.length
+    ? missingWards.map(w => `<span class="missing-chip">${escapeHTML(w)}</span>`).join('')
+    : `<span style="color:#16a34a;font-weight:900;">ส่งข้อมูลครบตามเงื่อนไขที่เลือก</span>`;
+
+  const scopeLabel = [
+    wardValue === 'all' ? 'ทุกหน่วยงาน' : wardValue,
+    bundleValue === 'all' ? 'ทุกแบบประเมิน' : (bundleValue === 'เชื้อดื้อยา' ? 'MDR / เชื้อดื้อยา' : bundleValue)
+  ].join(' | ');
+
+  return `
+    <section class="overview-page executive-page">
+      <div class="overview-title">รายงานสรุปการปฏิบัติตามมาตรฐาน IC Bundles (${escapeHTML(monthLabelTH(monthKey))})</div>
+      <div class="overview-sub">Executive Overview | เงื่อนไขรายงาน: ${escapeHTML(scopeLabel)}</div>
+
+      <div class="overview-kpis">
+        <div class="overview-kpi">
+          <div class="overview-kpi-label">จำนวนประเมินรวม</div>
+          <div class="overview-kpi-value">${scopeRows.length} ครั้ง</div>
+        </div>
+        <div class="overview-kpi">
+          <div class="overview-kpi-label">หน่วยงานที่ส่ง</div>
+          <div class="overview-kpi-value">${submittedWardCount}/${totalWards}</div>
+        </div>
+        <div class="overview-kpi">
+          <div class="overview-kpi-label">ค่าเฉลี่ยรวม</div>
+          <div class="overview-kpi-value">${formatPercent(overall)}</div>
+        </div>
+        <div class="overview-kpi">
+          <div class="overview-kpi-label">Bundle ต่ำสุด</div>
+          <div class="overview-kpi-value" style="font-size:1rem;">${lowestBundle ? `${escapeHTML(lowestBundle.bundleType)} ${formatPercent(lowestBundle.percent)}` : 'N/A'}</div>
+        </div>
+      </div>
+
+      <div class="overview-grid2">
+        <div class="overview-block">
+          <div class="overview-block-title">1. สรุปภาพรวมหน่วยงาน (Performance Matrix)</div>
+          <table class="overview-table">
+            <thead>
+              <tr>
+                <th>หน่วยงาน</th>
+                <th class="num">จำนวนประเมิน (ครั้ง)</th>
+                <th class="num">% การปฏิบัติ (โดยเฉลี่ย)</th>
+              </tr>
+            </thead>
+            <tbody>${wardRowsHtml}</tbody>
+          </table>
+        </div>
+
+        <div class="overview-block">
+          <div class="overview-block-title">2. สรุปตามประเภท Bundle</div>
+          <table class="overview-table">
+            <thead>
+              <tr>
+                <th>แบบประเมิน</th>
+                <th class="num">จำนวนส่ง</th>
+                <th class="num">% เฉลี่ย</th>
+              </tr>
+            </thead>
+            <tbody>${bundleRowsHtml}</tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="overview-grid2">
+        <div class="overview-block">
+          <div class="overview-block-title">3. หัวข้อที่ควรติดตาม แยกตาม Bundle</div>
+          <table class="overview-table">
+            <thead>
+              <tr>
+                <th>Bundle</th>
+                <th>หัวข้อที่มีผลต่ำสุด</th>
+                <th class="num">ผล</th>
+              </tr>
+            </thead>
+            <tbody>${weakRowsHtml}</tbody>
+          </table>
+        </div>
+
+        <div class="overview-block">
+          <div class="overview-block-title">4. หน่วยงานที่ไม่มีการส่งแบบประเมินตามเงื่อนไขนี้</div>
+          <div class="missing-box">${missingHtml}</div>
+          <div style="padding:0 12px 12px;color:#64748b;font-size:.74rem;line-height:1.45;">
+            หมายเหตุ: ถ้าเลือก “ทุกแบบประเมิน” หมายถึงหน่วยงานที่ไม่มีการส่ง Bundle ใดๆ ในเดือนนี้<br>
+            ถ้าเลือก Bundle เฉพาะ หมายถึงหน่วยงานที่ไม่มีการส่ง Bundle นั้น
+          </div>
+        </div>
+      </div>
+
+      <div class="overview-note">
+        หน้า 1/${targets.length + 1} | ${topWard ? `หน่วยงานที่มีผลสูงสุด: ${escapeHTML(topWard.ward)} ${formatPercent(topWard.percent)}` : ''}
+      </div>
+    </section>
+  `;
+}
+
 function buildExecutiveReportPage(target, pageNo, totalPages) {
   const monthKey = document.getElementById('report-month-select')?.value || '';
   const ward = target.ward;
@@ -1049,13 +1286,13 @@ function buildExecutiveReportPage(target, pageNo, totalPages) {
   const totalY = items.reduce((s, x) => s + x.y, 0);
   const totalN = items.reduce((s, x) => s + x.n, 0);
   const overall = totalY + totalN > 0 ? Math.round((totalY / (totalY + totalN)) * 1000) / 10 : null;
-  const overallText = overall === null ? 'N/A' : `${overall.toFixed(1)}%`;
+  const overallText = formatPercent(overall);
   const passCount = items.filter(x => x.percent !== null && x.percent >= 90).length;
   const lowest = [...items].filter(x => x.percent !== null).sort((a, b) => a.percent - b.percent)[0];
 
   const chartHtml = items.map(item => {
     const p = item.percent ?? 0;
-    const percentText = item.percent === null ? 'N/A' : `${item.percent}%`;
+    const percentText = formatPercent(item.percent);
 
     return `
       <div class="report-chart-row" style="display:grid;grid-template-columns:285px 1fr 56px;gap:10px;align-items:center;margin:7px 0;">
@@ -1078,7 +1315,7 @@ function buildExecutiveReportPage(target, pageNo, totalPages) {
   const tableRows = items.map(item => `
     <tr>
       <td>${item.no}. ${escapeHTML(item.topic)}</td>
-      <td>${item.percent === null ? 'N/A' : item.percent + '%'}</td>
+      <td>${formatPercent(item.percent)}</td>
     </tr>
   `).join('');
 
@@ -1120,7 +1357,7 @@ function buildExecutiveReportPage(target, pageNo, totalPages) {
         ผ่านเกณฑ์ 90% ขึ้นไป: <b>${passCount}/${items.length}</b> หัวข้อ
         <br>
         หัวข้อที่มีผลการปฏิบัติต่ำสุด:
-        <b>${lowest ? `ข้อ ${lowest.no} = ${lowest.percent}%` : 'N/A'}</b>
+        <b>${lowest ? `ข้อ ${lowest.no} = ${formatPercent(lowest.percent)}` : 'N/A'}</b>
       </div>
 
       <table class="report-table">
@@ -1149,6 +1386,9 @@ function renderExecutiveReport() {
   if (!paper || !monthEl || !wardEl || !bundleEl) return;
 
   try {
+    ensureExecutiveOverviewStyles();
+    ensureExecutiveDocButton();
+
     if (!executiveFiltersReady || !monthEl.value || !wardEl.value || !bundleEl.value) {
       executiveFiltersReady = true;
       initExecutiveReportFilters();
@@ -1167,17 +1407,14 @@ function renderExecutiveReport() {
       return;
     }
 
-    const pages = targets
-      .map((target, index) => buildExecutiveReportPage(target, index + 1, targets.length))
+    const totalPages = targets.length + 1;
+    const overviewPage = buildExecutiveOverviewPage(targets);
+    const detailPages = targets
+      .map((target, index) => buildExecutiveReportPage(target, index + 2, totalPages))
       .filter(Boolean)
       .join('');
 
-    paper.innerHTML = pages || `
-      <div class="report-empty">
-        <b>พบรายการประเมิน แต่ไม่พบคำตอบ Q1-Q16</b>
-        <div class="report-small-note">ตรวจสอบชื่อคอลัมน์ใน Google Sheet ว่าเป็น Q1, Q2, Q3 ... หรือไม่</div>
-      </div>
-    `;
+    paper.innerHTML = overviewPage + detailPages;
   } catch (err) {
     console.error('renderExecutiveReport error:', err);
 
@@ -1224,7 +1461,8 @@ function getReportPrintCSS() {
       background: #fff !important;
     }
 
-    .report-a4 {
+    .report-a4,
+    .overview-page {
       padding: 14mm 12mm !important;
       box-sizing: border-box !important;
       page-break-inside: avoid !important;
