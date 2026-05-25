@@ -2268,7 +2268,7 @@ try {
   paper.innerHTML = `
     <div class="annual-comp-a4" id="annual-comp-export-area">
       <div class="annual-comp-title">รายงานสถิติ Compliance รายปี ${annualEscape(annualThaiYearLabel(year))}</div>
-      <div class="annual-comp-sub">${annualEscape(scopeText)} | แสดงผลรายเดือนทั้งปีแบบแนวนอน</div>
+      <div class="annual-comp-sub">${annualEscape(scopeText)} | แสดงผลรายเดือนประจำปี</div>
 
       <div class="annual-comp-kpis">
         <div class="annual-comp-kpi">
@@ -2293,7 +2293,7 @@ try {
         <div class="annual-comp-block">
           <div class="annual-comp-block-title">
             <span>1. Compliance Rate รายเดือน</span>
-            <span class="annual-comp-block-sub">เส้นแดง = เกณฑ์ 90%</span>
+            <span class="annual-comp-block-sub"></span>
           </div>
           <div class="annual-comp-chart">${annualBuildBars(items, 'rate')}</div>
         </div>
@@ -2308,15 +2308,6 @@ try {
       </div>
 
       <div class="annual-comp-footer">
-        <div class="annual-comp-note">
-          <b>สรุป:</b>
-          เดือนที่ Compliance ต่ำสุดคือ <b>${lowMonth ? `${annualEscape(lowMonth.label)} ${annualFormatPercent(lowMonth.percent)}` : 'N/A'}</b><br>
-          คำนวณ Compliance = Y ÷ (Y + N) × 100 โดยไม่นับ NA
-        </div>
-        <div>
-          <div class="annual-comp-note" style="text-align:right;font-weight:800;margin-bottom:5px;">เดือนที่ไม่มีการส่งตามเงื่อนไขนี้</div>
-          <div class="annual-comp-chipbox">${noSendHtml}</div>
-        </div>
       </div>
     </div>
   `;
