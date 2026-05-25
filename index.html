@@ -1272,7 +1272,68 @@ function buildExecutiveOverviewPage(targets) {
     </section>
   `;
 }
+function buildWardIntroPage(ward, wardTargets) {
+  const monthKey = document.getElementById('report-month-select')?.value || '';
 
+  const bundleRows = REPORT_BUNDLES.map(bundleType => {
+    const found = wardTargets.find(x => x.bundleType === bundleType);
+    return {
+      bundleType,
+      count: found ? found.rows.length : 0
+    };
+  });
+
+  const totalAssess = bundleRows.reduce((s, x) => s + x.count, 0);
+  const sentBundleCount = bundleRows.filter(x => x.count > 0).length;
+
+  const topBundle = [...bundleRows].sort((a, b) => b.count - a.count)[0];
+
+  const rowsHtml = bundleRows.map(x => `
+    <tr>
+      <td>${escapeHTML(x.bundleType === 'เชื้อดื้อยา' ? 'MDR / เชื้อดื้อยา' : x.bundleType)}</td>
+      <td>${x.count} ครั้ง</td>
+    </tr>
+  `).join('');
+
+  return `
+    <section class="report-a4 executive-page"
+      style="max-width:1050px;margin:0 auto 34px;background:#fff;color:#111827;page-break-after:always;break-after:page;">
+
+      <div class="report-main-title" style="margin-top:16px;">
+        รายงานสรุปการปฏิบัติตามมาตรฐาน IC Bundles
+      </div>
+
+      <div class="report-meta" style="font-size:1.3rem;font-weight:700;margin-bottom:26px;">
+        หน่วยงาน: ${escapeHTML(ward)} 
+        &nbsp;|&nbsp; 
+        ประจำเดือน: ${escapeHTML(monthLabelTH(monthKey))}
+      </div>
+
+      <table class="report-table" style="max-width:700px;margin:0 auto;">
+        <thead>
+          <tr>
+            <th style="width:40%; text-align:center !important;">Bundle</th>
+            <th style="width:60%; text-align:center !important;">จำนวนครั้งที่ประเมิน</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
+
+      <div class="report-summary" style="margin-top:22px;">
+        <b>สรุปรายหน่วยงาน</b><br>
+        จำนวนครั้งที่ประเมินทั้งหมด: <b>${totalAssess} ครั้ง</b>
+        &nbsp;&nbsp; | &nbsp;&nbsp;
+        จำนวน Bundle ที่มีการส่ง: <b>${sentBundleCount}/${REPORT_BUNDLES.length}</b>
+        <br>
+        Bundle ที่ส่งมากที่สุด:
+        <b>${topBundle ? `${escapeHTML(topBundle.bundleType === 'เชื้อดื้อยา' ? 'MDR / เชื้อดื้อยา' : topBundle.bundleType)} = ${topBundle.count} ครั้ง` : '-'}</b>
+      </div>
+
+    </section>
+  `;
+}
 function buildExecutiveReportPage(target, pageNo, totalPages) {
   const monthKey = document.getElementById('report-month-select')?.value || '';
   const ward = target.ward;
@@ -1386,14 +1447,27 @@ function renderExecutiveReport() {
       return;
     }
 
-    const totalPages = targets.length + 1;
-    const overviewPage = buildExecutiveOverviewPage(targets);
-    const detailPages = targets
-      .map((target, index) => buildExecutiveReportPage(target, index + 2, totalPages))
-      .filter(Boolean)
-      .join('');
+   const overviewPage = buildExecutiveOverviewPage(targets);
 
-    paper.innerHTML = overviewPage + detailPages;
+// จัดกลุ่มตามหน่วยงาน
+const wardMap = new Map();
+targets.forEach(t => {
+  if (!wardMap.has(t.ward)) wardMap.set(t.ward, []);
+  wardMap.get(t.ward).push(t);
+});
+
+const pages = [overviewPage];
+
+// ใส่หน้าคั่นก่อนรายละเอียดของแต่ละหน่วยงาน
+wardMap.forEach((wardTargets, ward) => {
+  pages.push(buildWardIntroPage(ward, wardTargets));
+
+  wardTargets.forEach(target => {
+    const html = buildExecutiveReportPage(target, 0, 0);
+    if (html) pages.push(html);
+  });
+});
+paper.innerHTML = pages.join('');
   } catch (err) {
     console.error('renderExecutiveReport error:', err);
 
