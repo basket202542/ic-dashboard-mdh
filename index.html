@@ -231,6 +231,7 @@ tr:hover td{background:rgba(13,148,136,.04)}
   <button class="tab" onclick="sw('icn')">🎯 ICN Command</button>
   <button class="tab" onclick="sw('surv')">🏥 Surveillance</button>
   <button class="tab" onclick="sw('report')" style="border:1px solid rgba(124,58,237,0.4); color:var(--purple);">📑 Executive Report</button>
+  <button class="tab" onclick="swComplianceReport()">📊 Compliance Report</button>
 </div>
 
 <div class="page active" id="page-bundle">
@@ -562,6 +563,62 @@ tr:hover td{background:rgba(13,148,136,.04)}
         <b>กำลังเตรียมรายงาน...</b>
         <div class="report-small-note">ถ้าข้อมูลมาแล้ว ระบบจะเลือกเดือนล่าสุดให้อัตโนมัติ</div>
       </div>
+    <!-- =========================================================
+PATCH 2/3: เพิ่มหน้า Compliance Report
+วางหลัง </div> ของ page-report หรือก่อน </div> ปิด wrap ใหญ่
+หา: <div class="page" id="page-report">
+เลื่อนลงจนจบ page-report แล้ววางก้อนนี้ต่อท้าย
+========================================================= -->
+<div class="page" id="page-compliance-report">
+  <div class="sec-hdr purple">
+    <div class="sec-hdr-icon">📊</div>
+    <div class="sec-hdr-text">
+      <h2>Compliance Report</h2>
+      <p>รายงานภาพรวม Compliance rate และจำนวนการส่งแบบประเมินรายเดือน</p>
+    </div>
+  </div>
+
+  <div class="card" style="border:1px solid rgba(2,132,199,.22); background:linear-gradient(180deg,#fff 0%,#f8fbff 100%);">
+    <div class="card-hdr" style="margin-bottom:14px;">
+      <div>
+        <div class="card-title" style="font-size:1.1rem;color:var(--blue);">
+          <span class="dot" style="background:var(--blue)"></span>
+          📊 Monthly Compliance Report
+        </div>
+        <div class="card-sub" style="font-size:.8rem;margin-top:4px;">
+          เลือกเดือน หน่วยงาน และ Bundle เพื่อดู Compliance rate เทียบกับจำนวนการส่งแบบประเมิน
+        </div>
+      </div>
+    </div>
+
+    <div class="comp-toolbar">
+      <div class="comp-field">
+        <label>เดือน</label>
+        <select id="comp-month-select"></select>
+      </div>
+      <div class="comp-field">
+        <label>หน่วยงาน</label>
+        <select id="comp-ward-select"></select>
+      </div>
+      <div class="comp-field">
+        <label>Bundle</label>
+        <select id="comp-bundle-select"></select>
+      </div>
+
+      <button class="report-btn primary" onclick="renderComplianceReport()">🔄 สร้างรายงาน</button>
+      <button class="report-btn soft" onclick="exportComplianceReportPNG()">🖼️ PNG</button>
+      <button class="report-btn soft" onclick="exportComplianceReportPDF()">📄 PDF</button>
+      <button class="report-btn soft" onclick="printComplianceReport()">🖨️ พิมพ์</button>
+    </div>
+
+    <div id="compliance-report-paper" class="comp-paper">
+      <div class="report-empty">
+        <b>กดเมนู Compliance Report เพื่อโหลดรายงาน</b>
+        <div class="report-small-note">ระบบจะเลือกเดือนล่าสุดให้อัตโนมัติ</div>
+      </div>
+    </div>
+  </div>
+</div>
     </div>
   </div>
 </div>
@@ -1789,6 +1846,85 @@ function renderSurvKPI() { const d = DB.patient; const total = d.length; const a
 function renderInfTrend() { const wSel = document.getElementById('sel-ward-inf')?.value||'all'; let rows = DB.patient.filter(r=>(r.infectionStatus||'').includes('มี')); if(wSel!=='all') rows = rows.filter(r=>r.ward===wSel); const timeMap = new Map(); const grouped = {}; rows.forEach(r => { const info = getPeriodInfo(r.admitDate, 'month'); timeMap.set(info.sortKey, info.label); grouped[info.sortKey] = (grouped[info.sortKey]||0)+1; }); const sortedKeys = Array.from(timeMap.keys()).sort().slice(-12); const labels = sortedKeys.map(k => timeMap.get(k)); const data = sortedKeys.map(k => grouped[k] || 0); destroyChart('inftrend'); CH['inftrend'] = new Chart(document.getElementById('c-inf-trend'), { type:'bar', data:{labels, datasets:[{label:'New Infection',data,backgroundColor:'#e11d4888',borderColor:'#e11d48',borderWidth:2,borderRadius:4}]}, options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}}}} }); }
 function renderDonut() { const wSel = document.getElementById('sel-ward-donut')?.value||'all'; let rows = DB.patient; if(wSel!=='all') rows = rows.filter(r=>r.ward===wSel); const sysMap = {}; rows.forEach(r => { const sys = r.infectionSystem||''; sys.split(',').forEach(s => { s=s.trim(); if(s){ sysMap[s]=(sysMap[s]||0)+1; } }); }); const entries = Object.entries(sysMap).sort((a,b)=>b[1]-a[1]).slice(0,8); destroyChart('donut'); CH['donut'] = new Chart(document.getElementById('c-donut'), { type:'doughnut', data:{labels:entries.map(e=>e[0].substring(0,18)), datasets:[{data:entries.map(e=>e[1]),backgroundColor:COLORS.map(c=>c+'aa'),borderColor:COLORS,borderWidth:2,hoverOffset:6}]}, options:{responsive:true,plugins:{legend:{labels:{font:{size:10}}}},cutout:'55%'} }); }
 function renderPatientTable() { const sSel = document.getElementById('sel-status-pt')?.value||'all'; const wSel = document.getElementById('sel-ward-pt')?.value||'all'; let rows = DB.patient; if(wSel!=='all') rows = rows.filter(r=>r.ward===wSel); if(sSel==='active') rows = rows.filter(r=>!(r.status||'').includes('จำหน่าย')); if(sSel==='dc') rows = rows.filter(r=>(r.status||'').includes('จำหน่าย')); if(!rows.length){ document.getElementById('tbl-pt').innerHTML='<div class="empty">ไม่พบข้อมูล</div>'; return; } const html = `<table><thead><tr><th>HN</th><th>AN</th><th>ชื่อ-สกุล</th><th>อายุ</th><th>Ward</th><th>วันรับ</th><th>Dx</th><th>การติดเชื้อ</th><th>สถานะ</th></tr></thead><tbody>${rows.slice(0,100).map(r=>{ const isDC = (r.status||'').includes('จำหน่าย'); const inf = r.infectionSystem||''; const an = r.an||'-'; return `<tr><td style="font-family:var(--mono);font-size:.72rem;color:var(--teal)">${r.hn||'-'}</td><td><span style="font-family:var(--mono);font-size:.75rem;cursor:pointer;color:var(--amber);text-decoration:underline" onclick="goSearchAN('${an}')">${an}</span></td><td style="font-weight:500">${r.patientName||'-'}</td><td style="text-align:center;color:var(--muted)">${r.age||'-'}</td><td style="color:var(--muted);font-size:.75rem">${r.ward||'-'}</td><td style="font-family:var(--mono);font-size:.72rem;color:var(--muted)">${fmtDate(r.admitDate)}</td><td style="color:var(--muted);font-size:.75rem;max-width:160px;overflow:hidden;text-overflow:ellipsis">${r.diagnosis||'-'}</td><td style="max-width:160px">${inf?inf.split(',').map(s=>`<span style="background:rgba(225,29,72,.1);color:var(--rose);border:1px solid rgba(225,29,72,.2);border-radius:4px;padding:1px 5px;font-size:.65rem;display:inline-block;margin:1px">${s.trim().substring(0,16)}</span>`).join(''):'<span style="color:var(--muted)">ไม่มี</span>'}</td><td><span class="${isDC?'st-dc':'st-active'}">${isDC?'จำหน่าย':'กำลังรักษา'}</span></td></tr>`; }).join('')}</tbody></table>`; document.getElementById('tbl-pt').innerHTML = html; }
+
+<!-- =========================================================
+async function ensureJsPDF() {
+  if (window.jspdf && window.jspdf.jsPDF) return window.jspdf.jsPDF;
+
+  await new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+
+  return window.jspdf.jsPDF;
+}
+
+async function exportComplianceReportPDF() {
+  renderComplianceReport();
+  const paper = document.getElementById('compliance-report-paper');
+  if (!paper) return;
+
+  try {
+    const jsPDF = await ensureJsPDF();
+    const canvas = await html2canvas(paper, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const imgW = pageW;
+    const imgH = canvas.height * imgW / canvas.width;
+
+    let heightLeft = imgH;
+    let position = 0;
+
+    pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
+    heightLeft -= pageH;
+
+    while (heightLeft > 0) {
+      position -= pageH;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
+      heightLeft -= pageH;
+    }
+
+    pdf.save(`Compliance_Report_${document.getElementById('comp-month-select')?.value || 'month'}.pdf`);
+  } catch (err) {
+    alert('Export PDF ไม่สำเร็จ: ' + err.message);
+  }
+}
+
+function printComplianceReport() {
+  renderComplianceReport();
+  const paper = document.getElementById('compliance-report-paper');
+  if (!paper) return;
+
+  const css = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
+  const win = window.open('', '_blank');
+  win.document.write(`
+    <html>
+      <head>
+        <title>Compliance Report</title>
+        <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+        <style>
+          ${css}
+          *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+          body{background:#fff!important;margin:0!important;padding:0!important;font-family:'IBM Plex Sans Thai',sans-serif!important;}
+          .comp-paper{border:none!important;padding:0!important;}
+          .comp-a4{padding:12mm!important;}
+          @page{size:A4 portrait;margin:0;}
+        </style>
+      </head>
+      <body>${paper.outerHTML}</body>
+    </html>
+  `);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 500);
+}
+</script>
 
 loadAll();
 setInterval(loadAll, 5*60*1000);
