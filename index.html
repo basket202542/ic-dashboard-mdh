@@ -747,6 +747,7 @@ function renderAll() {
 
 // ==================== EXECUTIVE REPORT ====================
 const REPORT_BUNDLES = ['VAP', 'CAUTI', 'CLABSI', 'SSI', 'เชื้อดื้อยา', 'HAND HYGIENE'];
+
 const REPORT_QUESTION_LABELS = {
   'CAUTI': [
     'มีการประเมินความจำเป็นของการคาสายสวน',
@@ -833,18 +834,22 @@ const REPORT_QUESTION_LABELS = {
     'ทำความสะอาดรถเข็น/เปลนอนหลังใช้กับผู้ป่วยเชื้อดื้อยาก่อนนำไปใช้กับผู้ป่วยรายใหม่'
   ]
 };
+
 let executiveFiltersReady = false;
 
 function normalizeBundleType(v) {
   const s = String(v || '').trim().toUpperCase();
+  const raw = String(v || '').trim();
+
   if (!s) return '';
   if (s.includes('CAUTI')) return 'CAUTI';
   if (s.includes('CLABSI')) return 'CLABSI';
   if (s.includes('VAP')) return 'VAP';
   if (s.includes('SSI')) return 'SSI';
   if (s.includes('HAND')) return 'HAND HYGIENE';
-  if (s.includes('MDR') || s.includes('เชื้อดื้อยา')) return 'เชื้อดื้อยา';
-  return String(v || '').trim();
+  if (s.includes('MDR') || s.includes('MRSA') || s.includes('CRE') || s.includes('VRE') || raw.includes('เชื้อดื้อยา')) return 'เชื้อดื้อยา';
+
+  return raw;
 }
 
 function escapeHTML(v) {
@@ -871,10 +876,12 @@ function monthLabelTH(monthKey) {
 
 function normalizeAnswer(v) {
   const s = String(v ?? '').trim().toUpperCase();
+
   if (!s) return '';
-  if (['Y', 'YES', 'TRUE', '1', 'ใช่', 'ทำ', 'ปฏิบัติ', 'ทำ/ใช่'].includes(s)) return 'Y';
+  if (['Y', 'YES', 'TRUE', '1', 'ใช่', 'ทำ', 'ปฏิบัติ', 'ทำ/ใช่', '/'].includes(s)) return 'Y';
   if (['N', 'NO', 'FALSE', '0', 'ไม่', 'ไม่ทำ', 'ไม่ใช่', 'ไม่ปฏิบัติ'].includes(s)) return 'N';
   if (['NA', 'N/A', 'N.A.', '-', 'ไม่เกี่ยวข้อง', 'ไม่ประเมิน'].includes(s)) return 'NA';
+
   return '';
 }
 
@@ -885,14 +892,14 @@ function getQuestionLabel(bundleType, index) {
 
 function getQuestionStats(rows, bundleType) {
   const items = [];
+  const maxQuestion = Math.max(16, (REPORT_QUESTION_LABELS[bundleType] || []).length);
 
-const maxQuestion = Math.max(16, (REPORT_QUESTION_LABELS[bundleType] || []).length);
-
-for (let i = 1; i <= maxQuestion; i++) {
+  for (let i = 1; i <= maxQuestion; i++) {
     let y = 0, n = 0, na = 0, hasAnyValue = false;
 
     rows.forEach(r => {
       const ans = normalizeAnswer(r[`Q${i}`] || r[`q${i}`] || r[`ข้อ${i}`]);
+
       if (ans) hasAnyValue = true;
       if (ans === 'Y') y++;
       if (ans === 'N') n++;
@@ -918,17 +925,36 @@ for (let i = 1; i <= maxQuestion; i++) {
   return items;
 }
 
+function ensureExecutiveDocButton() {
+  const toolbar = document.querySelector('.report-toolbar');
+  if (!toolbar || document.getElementById('btn-export-exec-doc')) return;
+
+  const btn = document.createElement('button');
+  btn.id = 'btn-export-exec-doc';
+  btn.className = 'report-btn soft';
+  btn.type = 'button';
+  btn.textContent = '📄 Export DOC';
+  btn.onclick = exportExecutiveReportDoc;
+
+  toolbar.appendChild(btn);
+}
+
 function initExecutiveReportFilters() {
   const monthEl = document.getElementById('report-month-select');
   const wardEl = document.getElementById('report-ward-select');
   const bundleEl = document.getElementById('report-bundle-select');
+
   if (!monthEl || !wardEl || !bundleEl) return;
 
+  ensureExecutiveDocButton();
+
   const rows = DB.bundle || [];
+
   if (!rows.length) {
     monthEl.innerHTML = '<option value="">ไม่มีข้อมูลเดือน</option>';
     wardEl.innerHTML = '<option value="">ไม่มีข้อมูลหน่วยงาน</option>';
     bundleEl.innerHTML = '<option value="">ไม่มีข้อมูลแบบประเมิน</option>';
+
     document.getElementById('executive-report-paper').innerHTML = `
       <div class="report-empty"><b>ยังไม่มีข้อมูล Bundle ในระบบ</b></div>
     `;
@@ -948,15 +974,170 @@ function initExecutiveReportFilters() {
   });
 
   monthEl.innerHTML = months.map(m => `<option value="${escapeHTML(m)}">${escapeHTML(monthLabelTH(m))}</option>`).join('');
-  wardEl.innerHTML = wards.map(w => `<option value="${escapeHTML(w)}">${escapeHTML(w)}</option>`).join('');
-  bundleEl.innerHTML = bundles.map(b => `<option value="${escapeHTML(b)}">${escapeHTML(b === 'เชื้อดื้อยา' ? 'MDR / เชื้อดื้อยา' : b)}</option>`).join('');
+
+  wardEl.innerHTML = `
+    <option value="all">ทุกหน่วยงาน</option>
+    ${wards.map(w => `<option value="${escapeHTML(w)}">${escapeHTML(w)}</option>`).join('')}
+  `;
+
+  bundleEl.innerHTML = `
+    <option value="all">ทุกแบบประเมิน</option>
+    ${bundles.map(b => `<option value="${escapeHTML(b)}">${escapeHTML(b === 'เชื้อดื้อยา' ? 'MDR / เชื้อดื้อยา' : b)}</option>`).join('')}
+  `;
 
   if (curMonth && months.includes(curMonth)) monthEl.value = curMonth;
-  if (curWard && wards.includes(curWard)) wardEl.value = curWard;
-  if (curBundle && bundles.includes(curBundle)) bundleEl.value = curBundle;
+  if (curWard && (curWard === 'all' || wards.includes(curWard))) wardEl.value = curWard;
+  if (curBundle && (curBundle === 'all' || bundles.includes(curBundle))) bundleEl.value = curBundle;
 
   executiveFiltersReady = true;
   renderExecutiveReport();
+}
+
+function getExecutiveTargets() {
+  const monthEl = document.getElementById('report-month-select');
+  const wardEl = document.getElementById('report-ward-select');
+  const bundleEl = document.getElementById('report-bundle-select');
+
+  const monthKey = monthEl?.value || '';
+  const wardValue = wardEl?.value || 'all';
+  const bundleValue = normalizeBundleType(bundleEl?.value || 'all');
+
+  let rows = (DB.bundle || []).filter(r => monthKeyFromDate(r.timestamp) === monthKey);
+
+  if (wardValue !== 'all') rows = rows.filter(r => r.ward === wardValue);
+  if (bundleValue !== 'all') rows = rows.filter(r => normalizeBundleType(r.bundleType) === bundleValue);
+
+  const map = new Map();
+
+  rows.forEach(r => {
+    const ward = r.ward || 'ไม่ระบุ';
+    const bundleType = normalizeBundleType(r.bundleType);
+    if (!ward || !bundleType) return;
+
+    const key = `${ward}|||${bundleType}`;
+
+    if (!map.has(key)) {
+      map.set(key, { ward, bundleType, rows: [] });
+    }
+
+    map.get(key).rows.push(r);
+  });
+
+  const priority = REPORT_BUNDLES;
+
+  return [...map.values()].sort((a, b) => {
+    const wardCompare = a.ward.localeCompare(b.ward, 'th');
+    if (wardCompare !== 0) return wardCompare;
+
+    const ai = priority.indexOf(a.bundleType);
+    const bi = priority.indexOf(b.bundleType);
+
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+}
+
+function buildExecutiveReportPage(target, pageNo, totalPages) {
+  const monthKey = document.getElementById('report-month-select')?.value || '';
+  const ward = target.ward;
+  const bundleType = target.bundleType;
+  const rows = target.rows;
+
+  const items = getQuestionStats(rows, bundleType);
+
+  if (!items.length) return '';
+
+  const totalY = items.reduce((s, x) => s + x.y, 0);
+  const totalN = items.reduce((s, x) => s + x.n, 0);
+  const overall = totalY + totalN > 0 ? Math.round((totalY / (totalY + totalN)) * 1000) / 10 : null;
+  const overallText = overall === null ? 'N/A' : `${overall.toFixed(1)}%`;
+  const passCount = items.filter(x => x.percent !== null && x.percent >= 90).length;
+  const lowest = [...items].filter(x => x.percent !== null).sort((a, b) => a.percent - b.percent)[0];
+
+  const chartHtml = items.map(item => {
+    const p = item.percent ?? 0;
+    const percentText = item.percent === null ? 'N/A' : `${item.percent}%`;
+
+    return `
+      <div class="report-chart-row" style="display:grid;grid-template-columns:285px 1fr 56px;gap:10px;align-items:center;margin:7px 0;">
+        <div class="report-topic" style="font-size:.78rem;line-height:1.25;text-align:right;color:#111827;">
+          ${item.no}. ${escapeHTML(item.topic)}
+        </div>
+
+        <div class="report-bar-track" style="height:30px;background:#e5e7eb;border-radius:2px;position:relative;overflow:hidden;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
+          <div class="report-bar" style="height:100%;width:${Math.max(0, Math.min(100, p))}%;background:#1f77b4;border-radius:2px;min-width:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>
+          <div class="report-standard" style="position:absolute;top:0;bottom:0;left:90%;width:3px;background:#0b74bd;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>
+        </div>
+
+        <div class="report-pct" style="font-size:.9rem;font-weight:800;color:#111827;">
+          ${percentText}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const tableRows = items.map(item => `
+    <tr>
+      <td>${item.no}. ${escapeHTML(item.topic)}</td>
+      <td>${item.percent === null ? 'N/A' : item.percent + '%'}</td>
+    </tr>
+  `).join('');
+
+  return `
+    <section class="report-a4 executive-page"
+      style="max-width:1050px;margin:0 auto 34px;background:#fff;color:#111827;page-break-after:${pageNo < totalPages ? 'always' : 'auto'};break-after:${pageNo < totalPages ? 'page' : 'auto'};">
+
+      <div class="report-main-title">
+        รายงานสรุปผลการปฏิบัติตามมาตรฐาน ${escapeHTML(bundleType)} Bundle
+      </div>
+
+      <div class="report-meta">
+        หน่วยงาน: ${escapeHTML(ward)}
+        &nbsp;&nbsp; | &nbsp;&nbsp;
+        ประจำเดือน: ${escapeHTML(monthLabelTH(monthKey))}
+        &nbsp;&nbsp; | &nbsp;&nbsp;
+        จำนวนที่ประเมิน ${escapeHTML(bundleType)} Bundle: ${rows.length} ครั้ง
+      </div>
+
+      <div class="report-chart">
+        ${chartHtml}
+
+        <div class="report-x-axis">
+          <div class="report-y-label">หัวข้อประเมิน</div>
+          <div>
+            <div class="report-ticks">
+              <span>0</span><span>20</span><span>40</span><span>60</span><span>80</span><span>100</span>
+            </div>
+            <div class="report-x-label">ผลการปฏิบัติ (%)</div>
+          </div>
+          <div class="report-standard-label">เกณฑ์มาตรฐาน 90%</div>
+        </div>
+      </div>
+
+      <div class="report-summary">
+        <b>สรุปผลการประเมิน</b><br>
+        ค่าเฉลี่ยรวม: <b>${overallText}</b>
+        &nbsp;&nbsp; | &nbsp;&nbsp;
+        ผ่านเกณฑ์ 90% ขึ้นไป: <b>${passCount}/${items.length}</b> หัวข้อ
+        <br>
+        หัวข้อที่มีผลการปฏิบัติต่ำสุด:
+        <b>${lowest ? `ข้อ ${lowest.no} = ${lowest.percent}%` : 'N/A'}</b>
+      </div>
+
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>หัวข้อประเมิน (${escapeHTML(bundleType)} Bundle)</th>
+            <th>ผลการปฏิบัติ (%)</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+
+      <div style="text-align:right;color:#64748b;font-size:.72rem;margin-top:8px;">
+        หน้า ${pageNo}/${totalPages}
+      </div>
+    </section>
+  `;
 }
 
 function renderExecutiveReport() {
@@ -974,17 +1155,9 @@ function renderExecutiveReport() {
       return;
     }
 
-    const monthKey = monthEl.value;
-    const ward = wardEl.value;
-    const bundleType = normalizeBundleType(bundleEl.value);
+    const targets = getExecutiveTargets();
 
-    const rows = (DB.bundle || []).filter(r =>
-      monthKeyFromDate(r.timestamp) === monthKey &&
-      r.ward === ward &&
-      normalizeBundleType(r.bundleType) === bundleType
-    );
-
-    if (!rows.length) {
+    if (!targets.length) {
       paper.innerHTML = `
         <div class="report-empty">
           <b>ไม่พบข้อมูลตามเงื่อนไขที่เลือก</b>
@@ -994,96 +1167,20 @@ function renderExecutiveReport() {
       return;
     }
 
-    const items = getQuestionStats(rows, bundleType);
+    const pages = targets
+      .map((target, index) => buildExecutiveReportPage(target, index + 1, targets.length))
+      .filter(Boolean)
+      .join('');
 
-    if (!items.length) {
-      paper.innerHTML = `
-        <div class="report-empty">
-          <b>พบรายการประเมิน แต่ไม่พบคำตอบ Q1-Q16</b>
-          <div class="report-small-note">ตรวจสอบชื่อคอลัมน์ใน Google Sheet ว่าเป็น Q1, Q2, Q3 ... หรือไม่</div>
-        </div>
-      `;
-      return;
-    }
-
-    const totalY = items.reduce((s, x) => s + x.y, 0);
-    const totalN = items.reduce((s, x) => s + x.n, 0);
-    const overall = totalY + totalN > 0 ? Math.round((totalY / (totalY + totalN)) * 1000) / 10 : null;
-    const overallText = overall === null ? 'N/A' : `${overall.toFixed(1)}%`;
-
-    const passCount = items.filter(x => x.percent !== null && x.percent >= 90).length;
-    const lowest = [...items].filter(x => x.percent !== null).sort((a, b) => a.percent - b.percent)[0];
-    const submittedCount = rows.length;
-
-    const chartHtml = items.map(item => {
-      const p = item.percent ?? 0;
-      return `
-        <div class="report-chart-row">
-          <div class="report-topic">${item.no}. ${escapeHTML(item.topic)}</div>
-          <div class="report-bar-track">
-            <div class="report-bar" style="width:${Math.max(0, Math.min(100, p))}%"></div>
-            <div class="report-standard"></div>
-          </div>
-          <div class="report-pct">${item.percent === null ? 'N/A' : item.percent + '%'}</div>
-        </div>
-      `;
-    }).join('');
-
-    const tableRows = items.map(item => `
-      <tr>
-        <td>${item.no}. ${escapeHTML(item.topic)}</td>
-        <td>${item.percent === null ? 'N/A' : item.percent + '%'}</td>
-      </tr>
-    `).join('');
-
-    paper.innerHTML = `
-      <div class="report-a4">
-        <div class="report-main-title">รายงานสรุปผลการปฏิบัติตามมาตรฐาน ${escapeHTML(bundleType)} Bundle</div>
-        <div class="report-meta">
-          หน่วยงาน: ${escapeHTML(ward)}
-          &nbsp;&nbsp; | &nbsp;&nbsp;
-          ประจำเดือน: ${escapeHTML(monthLabelTH(monthKey))}
-          &nbsp;&nbsp; | &nbsp;&nbsp;
-          จำนวนที่ประเมิน ${escapeHTML(bundleType)} Bundle: ${submittedCount} ครั้ง
-        </div>
-
-        <div class="report-chart">
-          ${chartHtml}
-          <div class="report-x-axis">
-            <div class="report-y-label">หัวข้อประเมิน</div>
-            <div>
-              <div class="report-ticks">
-                <span>0</span><span>20</span><span>40</span><span>60</span><span>80</span><span>100</span>
-              </div>
-              <div class="report-x-label">ผลการปฏิบัติ (%)</div>
-            </div>
-            <div class="report-standard-label">เกณฑ์มาตรฐาน 90%</div>
-          </div>
-        </div>
-
-        <div class="report-summary">
-          <b>สรุปผลการประเมิน</b><br>
-          ค่าเฉลี่ยรวม: <b>${overallText}</b>
-          &nbsp;&nbsp; | &nbsp;&nbsp;
-          ผ่านเกณฑ์ 90% ขึ้นไป: <b>${passCount}/${items.length}</b> หัวข้อ
-          <br>
-          หัวข้อที่มีผลการปฏิบัติต่ำสุด:
-          <b>${lowest ? `ข้อ ${lowest.no} = ${lowest.percent}%` : 'N/A'}</b>
-        </div>
-
-        <table class="report-table">
-          <thead>
-            <tr>
-              <th>หัวข้อประเมิน (${escapeHTML(bundleType)} Bundle)</th>
-              <th>ผลการปฏิบัติ (%)</th>
-            </tr>
-          </thead>
-          <tbody>${tableRows}</tbody>
-        </table>
+    paper.innerHTML = pages || `
+      <div class="report-empty">
+        <b>พบรายการประเมิน แต่ไม่พบคำตอบ Q1-Q16</b>
+        <div class="report-small-note">ตรวจสอบชื่อคอลัมน์ใน Google Sheet ว่าเป็น Q1, Q2, Q3 ... หรือไม่</div>
       </div>
     `;
   } catch (err) {
     console.error('renderExecutiveReport error:', err);
+
     paper.innerHTML = `
       <div class="report-empty">
         <b>เกิดข้อผิดพลาดตอนสร้างรายงาน</b>
@@ -1093,33 +1190,108 @@ function renderExecutiveReport() {
   }
 }
 
+function getExecutiveFileName(ext) {
+  const month = document.getElementById('report-month-select')?.value || 'month';
+  const ward = document.getElementById('report-ward-select')?.value || 'ward';
+  const bundle = document.getElementById('report-bundle-select')?.value || 'bundle';
+  const clean = s => String(s).replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, '_');
+
+  return `Bundle_Report_${clean(month)}_${clean(ward)}_${clean(bundle)}.${ext}`;
+}
+
+function getReportPrintCSS() {
+  const css = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
+
+  return `
+    ${css}
+
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    body {
+      background: #fff !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      font-family: 'IBM Plex Sans Thai', sans-serif !important;
+      color: #111827 !important;
+    }
+
+    .report-paper {
+      border: none !important;
+      padding: 0 !important;
+      background: #fff !important;
+    }
+
+    .report-a4 {
+      padding: 14mm 12mm !important;
+      box-sizing: border-box !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+
+    .report-chart-row {
+      display: grid !important;
+      grid-template-columns: 285px 1fr 56px !important;
+      gap: 10px !important;
+      align-items: center !important;
+    }
+
+    .report-bar-track {
+      height: 30px !important;
+      background: #e5e7eb !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    .report-bar {
+      background: #1f77b4 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    .report-standard {
+      background: #0b74bd !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+  `;
+}
+
 function printExecutiveReport() {
+  renderExecutiveReport();
+
   const paper = document.getElementById('executive-report-paper');
   if (!paper) return;
 
-  const css = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
   const win = window.open('', '_blank');
+
   win.document.write(`
     <html>
       <head>
         <title>Executive Bundle Report</title>
         <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-        <style>
-          ${css}
-          body{background:#fff!important;padding:20px!important;font-family:'IBM Plex Sans Thai',sans-serif!important}
-          .report-paper{border:none!important;padding:0!important}
-          @page{size:A4 portrait;margin:12mm}
-        </style>
+        <style>${getReportPrintCSS()}</style>
       </head>
       <body>${paper.outerHTML}</body>
     </html>
   `);
+
   win.document.close();
   win.focus();
-  setTimeout(() => win.print(), 350);
+
+  setTimeout(() => win.print(), 500);
 }
 
 async function exportExecutiveReportImage() {
+  renderExecutiveReport();
+
   const paper = document.getElementById('executive-report-paper');
   if (!paper) return;
 
@@ -1130,13 +1302,8 @@ async function exportExecutiveReportImage() {
       useCORS: true
     });
 
-    const month = document.getElementById('report-month-select')?.value || 'month';
-    const ward = document.getElementById('report-ward-select')?.value || 'ward';
-    const bundle = document.getElementById('report-bundle-select')?.value || 'bundle';
-
-    const clean = s => String(s).replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, '_');
     const link = document.createElement('a');
-    link.download = `Bundle_Report_${clean(month)}_${clean(ward)}_${clean(bundle)}.png`;
+    link.download = getExecutiveFileName('png');
     link.href = canvas.toDataURL('image/png');
     link.click();
   } catch (err) {
@@ -1145,6 +1312,41 @@ async function exportExecutiveReportImage() {
   }
 }
 
+function exportExecutiveReportDoc() {
+  renderExecutiveReport();
+
+  const paper = document.getElementById('executive-report-paper');
+  if (!paper) return;
+
+  try {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>${getReportPrintCSS()}</style>
+      </head>
+      <body>${paper.outerHTML}</body>
+      </html>
+    `;
+
+    const blob = new Blob(['\ufeff', html], {
+      type: 'application/msword;charset=utf-8'
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = getExecutiveFileName('doc');
+    link.click();
+
+    setTimeout(() => URL.revokeObjectURL(url), 800);
+  } catch (err) {
+    console.error('exportExecutiveReportDoc error:', err);
+    alert('Export เอกสารไม่สำเร็จ: ' + err.message);
+  }
+}
 // ==================== BUNDLE ====================
 function renderBundleKPI() {
   const d = DB.bundle;
