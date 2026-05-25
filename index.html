@@ -558,74 +558,17 @@ tr:hover td{background:rgba(13,148,136,.04)}
       <button class="report-btn soft" onclick="exportExecutiveReportImage()">🖼️ Export PNG</button>
     </div>
 
-    <div id="executive-report-paper" class="report-paper">
-      <div class="report-empty">
-        <b>กำลังเตรียมรายงาน...</b>
-        <div class="report-small-note">ถ้าข้อมูลมาแล้ว ระบบจะเลือกเดือนล่าสุดให้อัตโนมัติ</div>
-      </div>
-    <!-- =========================================================
-PATCH 2/3: เพิ่มหน้า Compliance Report
-วางหลัง </div> ของ page-report หรือก่อน </div> ปิด wrap ใหญ่
-หา: <div class="page" id="page-report">
-เลื่อนลงจนจบ page-report แล้ววางก้อนนี้ต่อท้าย
-========================================================= -->
-<div class="page" id="page-compliance-report">
-  <div class="sec-hdr purple">
-    <div class="sec-hdr-icon">📊</div>
-    <div class="sec-hdr-text">
-      <h2>Compliance Report</h2>
-      <p>รายงานภาพรวม Compliance rate และจำนวนการส่งแบบประเมินรายเดือน</p>
-    </div>
-  </div>
-
-  <div class="card" style="border:1px solid rgba(2,132,199,.22); background:linear-gradient(180deg,#fff 0%,#f8fbff 100%);">
-    <div class="card-hdr" style="margin-bottom:14px;">
-      <div>
-        <div class="card-title" style="font-size:1.1rem;color:var(--blue);">
-          <span class="dot" style="background:var(--blue)"></span>
-          📊 Monthly Compliance Report
-        </div>
-        <div class="card-sub" style="font-size:.8rem;margin-top:4px;">
-          เลือกเดือน หน่วยงาน และ Bundle เพื่อดู Compliance rate เทียบกับจำนวนการส่งแบบประเมิน
-        </div>
-      </div>
-    </div>
-
-    <div class="comp-toolbar">
-      <div class="comp-field">
-        <label>เดือน</label>
-        <select id="comp-month-select"></select>
-      </div>
-      <div class="comp-field">
-        <label>หน่วยงาน</label>
-        <select id="comp-ward-select"></select>
-      </div>
-      <div class="comp-field">
-        <label>Bundle</label>
-        <select id="comp-bundle-select"></select>
-      </div>
-
-      <button class="report-btn primary" onclick="renderComplianceReport()">🔄 สร้างรายงาน</button>
-      <button class="report-btn soft" onclick="exportComplianceReportPNG()">🖼️ PNG</button>
-      <button class="report-btn soft" onclick="exportComplianceReportPDF()">📄 PDF</button>
-      <button class="report-btn soft" onclick="printComplianceReport()">🖨️ พิมพ์</button>
-    </div>
-
-    <div id="compliance-report-paper" class="comp-paper">
-      <div class="report-empty">
-        <b>กดเมนู Compliance Report เพื่อโหลดรายงาน</b>
-        <div class="report-small-note">ระบบจะเลือกเดือนล่าสุดให้อัตโนมัติ</div>
-      </div>
-    </div>
-  </div>
-</div>
-    </div>
+<div id="executive-report-paper" class="report-paper">
+  <div class="report-empty">
+    <b>กำลังเตรียมรายงาน...</b>
+    <div class="report-small-note">ถ้าข้อมูลมาแล้ว ระบบจะเลือกเดือนล่าสุดให้อัตโนมัติ</div>
   </div>
 </div>
 
-
 </div>
-
+</div>
+</div>
+  
 <script>
 const API = 'https://script.google.com/macros/s/AKfycbwYYomUMt7OcyNy5mfpLSbGH-UG3oSq2nIXLrQllaXjv83oBEfWQWeIwOIptbNaF4dgEQ/exec';
 let DB = { bundle:[], daily:[], patient:[] };
