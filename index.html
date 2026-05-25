@@ -886,7 +886,9 @@ function getQuestionLabel(bundleType, index) {
 function getQuestionStats(rows, bundleType) {
   const items = [];
 
-  for (let i = 1; i <= 16; i++) {
+const maxQuestion = Math.max(16, (REPORT_QUESTION_LABELS[bundleType] || []).length);
+
+for (let i = 1; i <= maxQuestion; i++) {
     let y = 0, n = 0, na = 0, hasAnyValue = false;
 
     rows.forEach(r => {
