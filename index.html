@@ -1267,8 +1267,8 @@ function buildExecutiveOverviewPage(targets) {
       </div>
 
       <div class="overview-note">
-        หน้า 1/${targets.length + 1} | ${topWard ? `หน่วยงานที่มีผลสูงสุด: ${escapeHTML(topWard.ward)} ${formatPercent(topWard.percent)}` : ''}
-      </div>
+  ${topWard ? `หน่วยงานที่มีผลสูงสุด: ${escapeHTML(topWard.ward)} ${formatPercent(topWard.percent)}` : ''}
+</div>
     </section>
   `;
 }
@@ -1312,13 +1312,6 @@ function buildExecutiveReportPage(target, pageNo, totalPages) {
     `;
   }).join('');
 
-  const tableRows = items.map(item => `
-    <tr>
-      <td>${item.no}. ${escapeHTML(item.topic)}</td>
-      <td>${formatPercent(item.percent)}</td>
-    </tr>
-  `).join('');
-
   return `
     <section class="report-a4 executive-page"
       style="max-width:1050px;margin:0 auto 34px;background:#fff;color:#111827;page-break-after:${pageNo < totalPages ? 'always' : 'auto'};break-after:${pageNo < totalPages ? 'page' : 'auto'};">
@@ -1360,24 +1353,9 @@ function buildExecutiveReportPage(target, pageNo, totalPages) {
         <b>${lowest ? `ข้อ ${lowest.no} = ${formatPercent(lowest.percent)}` : 'N/A'}</b>
       </div>
 
-      <table class="report-table">
-        <thead>
-          <tr>
-            <th>หัวข้อประเมิน (${escapeHTML(bundleType)} Bundle)</th>
-            <th>ผลการปฏิบัติ (%)</th>
-          </tr>
-        </thead>
-        <tbody>${tableRows}</tbody>
-      </table>
-
-      <div style="text-align:right;color:#64748b;font-size:.72rem;margin-top:8px;">
-        หน้า ${pageNo}/${totalPages}
-      </div>
     </section>
   `;
 }
-
-function renderExecutiveReport() {
   const paper = document.getElementById('executive-report-paper');
   const monthEl = document.getElementById('report-month-select');
   const wardEl = document.getElementById('report-ward-select');
