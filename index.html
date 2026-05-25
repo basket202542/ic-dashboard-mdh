@@ -1867,81 +1867,110 @@ function printComplianceReport() {
   win.focus();
   setTimeout(() => win.print(), 500);
 }
-// ==================== SAFE PATCH: COMPLIANCE REPORT PAGE ====================
-function injectComplianceReportStyle() {
-  if (document.getElementById('comp-report-style')) return;
+// ==================== SAFE PATCH V2: ANNUAL COMPLIANCE REPORT ====================
+// วิธีวาง: วางทับก้อน SAFE PATCH: COMPLIANCE REPORT PAGE เดิมทั้งหมด
+// หรือวางหลัง END SAFE PATCH เดิม และก่อน loadAll(); ได้เลย
+// ห้ามใส่ <script> เพราะก้อนนี้ต้องอยู่ใน <script> เดิม
+
+function annualCompInjectStyle() {
+  if (document.getElementById('annual-comp-style')) return;
 
   const style = document.createElement('style');
-  style.id = 'comp-report-style';
+  style.id = 'annual-comp-style';
   style.innerHTML = `
-    .comp-toolbar{display:grid;grid-template-columns:1fr 1fr 1fr auto auto auto;gap:10px;align-items:end;margin:12px 0 16px;}
-    .comp-field label{display:block;font-size:.72rem;color:var(--muted);font-family:var(--mono);font-weight:700;margin-bottom:5px;}
-    .comp-field select{width:100%;background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px 11px;font-size:.82rem;font-family:var(--font);color:var(--text);outline:none;}
-    .comp-field select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(2,132,199,.12);}
-    .comp-paper{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:24px;min-height:420px;overflow:hidden;}
-    .comp-a4{max-width:1120px;margin:0 auto;background:#fff;color:#111827;}
-    .comp-title{text-align:center;font-size:1.65rem;font-weight:900;line-height:1.25;color:#0f172a;margin-bottom:8px;}
-    .comp-sub{text-align:center;color:#334155;font-size:.95rem;margin-bottom:18px;}
-    .comp-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:12px 0 18px;}
-    .comp-kpi{border:1px solid #cbd5e1;border-radius:14px;padding:13px 14px;background:#f8fafc;}
-    .comp-kpi-label{font-size:.73rem;color:#64748b;font-weight:800;margin-bottom:4px;}
-    .comp-kpi-value{font-size:1.32rem;color:#075985;font-weight:900;line-height:1.25;}
-    .comp-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px;}
-    .comp-block{border:1px solid #dbe3ee;border-radius:14px;background:#fff;overflow:hidden;}
-    .comp-block-title{background:#dbeaf7;color:#0f172a;font-weight:900;padding:11px 14px;border-bottom:1px solid #cbd5e1;display:flex;justify-content:space-between;gap:10px;align-items:center;}
-    .comp-block-sub{font-size:.74rem;color:#64748b;font-weight:700;}
-    .comp-chart{padding:14px;}
-    .comp-row{display:grid;grid-template-columns:180px 1fr 64px;gap:10px;align-items:center;margin:8px 0;}
-    .comp-label{font-size:.78rem;line-height:1.2;text-align:right;color:#111827;font-weight:700;}
-    .comp-track{height:26px;background:#e5e7eb;border-radius:999px;position:relative;overflow:hidden;}
-    .comp-fill{height:100%;background:#1f77b4;border-radius:999px;min-width:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-    .comp-fill.count{background:#0d9488;}
-    .comp-standard{position:absolute;top:0;bottom:0;left:90%;width:3px;background:#ef4444;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-    .comp-value{font-weight:900;color:#0f172a;font-size:.85rem;white-space:nowrap;}
-    .comp-insights{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;}
-    .comp-table{width:100%;border-collapse:collapse;font-size:.82rem;}
-    .comp-table th{background:#eef6fd!important;color:#111827!important;border:1px solid #cbd5e1!important;padding:8px!important;text-align:left!important;font-family:var(--font)!important;font-size:.78rem!important;text-transform:none!important;letter-spacing:0!important;}
-    .comp-table td{border:1px solid #e2e8f0!important;padding:8px!important;color:#111827!important;white-space:normal!important;background:#fff!important;}
-    .comp-table td.num,.comp-table th.num{text-align:center!important;font-weight:900;}
-    .comp-chip-box{display:flex;flex-wrap:wrap;gap:6px;padding:12px;}
-    .comp-chip{border-radius:999px;padding:4px 9px;font-size:.72rem;font-weight:800;border:1px solid #fecaca;background:#fee2e2;color:#991b1b;}
-    .comp-note{font-size:.72rem;color:#64748b;text-align:right;margin-top:12px;}
+    .annual-comp-toolbar{display:grid;grid-template-columns:150px 1fr 230px auto auto auto;gap:10px;align-items:end;margin:12px 0 16px;}
+    .annual-comp-field label{display:block;font-size:.72rem;color:var(--muted);font-family:var(--mono);font-weight:700;margin-bottom:5px;}
+    .annual-comp-field select{width:100%;background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px 11px;font-size:.82rem;font-family:var(--font);color:var(--text);outline:none;}
+    .annual-comp-field select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(2,132,199,.12);}
+    .annual-comp-paper{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:18px;min-height:420px;overflow:auto;}
+    .annual-comp-a4{width:1120px;max-width:100%;margin:0 auto;background:#fff;color:#111827;padding:16px 18px;}
+    .annual-comp-title{text-align:center;font-size:1.55rem;font-weight:900;line-height:1.25;color:#0f172a;margin-bottom:6px;}
+    .annual-comp-sub{text-align:center;color:#334155;font-size:.9rem;margin-bottom:14px;}
+    .annual-comp-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:10px 0 14px;}
+    .annual-comp-kpi{border:1px solid #cbd5e1;border-radius:13px;padding:10px 12px;background:#f8fafc;}
+    .annual-comp-kpi-label{font-size:.7rem;color:#64748b;font-weight:800;margin-bottom:3px;}
+    .annual-comp-kpi-value{font-size:1.15rem;color:#075985;font-weight:900;line-height:1.25;}
+    .annual-comp-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px;}
+    .annual-comp-block{border:1px solid #dbe3ee;border-radius:14px;background:#fff;overflow:hidden;}
+    .annual-comp-block-title{background:#dbeaf7;color:#0f172a;font-weight:900;padding:10px 12px;border-bottom:1px solid #cbd5e1;display:flex;justify-content:space-between;gap:10px;align-items:center;}
+    .annual-comp-block-sub{font-size:.72rem;color:#64748b;font-weight:700;}
+    .annual-comp-chart{padding:10px 12px 12px;}
+    .annual-comp-row{display:grid;grid-template-columns:58px 1fr 70px;gap:8px;align-items:center;margin:7px 0;}
+    .annual-comp-label{font-size:.78rem;line-height:1.2;text-align:right;color:#111827;font-weight:800;}
+    .annual-comp-track{height:23px;background:#e5e7eb;border-radius:999px;position:relative;overflow:hidden;}
+    .annual-comp-fill{height:100%;background:#1f77b4;border-radius:999px;min-width:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .annual-comp-fill.count{background:#0d9488;}
+    .annual-comp-fill.na{background:#cbd5e1;}
+    .annual-comp-standard{position:absolute;top:0;bottom:0;left:90%;width:3px;background:#ef4444;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .annual-comp-value{font-weight:900;color:#0f172a;font-size:.8rem;white-space:nowrap;}
+    .annual-comp-footer{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;}
+    .annual-comp-note{font-size:.72rem;color:#64748b;line-height:1.45;}
+    .annual-comp-chipbox{display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-end;}
+    .annual-comp-chip{border-radius:999px;padding:3px 8px;font-size:.7rem;font-weight:800;border:1px solid #fecaca;background:#fee2e2;color:#991b1b;}
+    .annual-comp-ok{border-color:#bbf7d0;background:#dcfce7;color:#166534;}
     @media(max-width:1050px){
-      .comp-toolbar{grid-template-columns:1fr}
-      .comp-grid,.comp-insights{grid-template-columns:1fr}
-      .comp-row{grid-template-columns:1fr}
-      .comp-label{text-align:left}
-      .comp-kpis{grid-template-columns:1fr 1fr}
+      .annual-comp-toolbar{grid-template-columns:1fr}
+      .annual-comp-grid,.annual-comp-footer{grid-template-columns:1fr}
+      .annual-comp-row{grid-template-columns:1fr}
+      .annual-comp-label{text-align:left}
+      .annual-comp-kpis{grid-template-columns:1fr 1fr}
+      .annual-comp-a4{width:100%}
     }
     @media print{
-      .comp-a4{padding:12mm!important}
-      .comp-block,.comp-kpi{page-break-inside:avoid!important;break-inside:avoid!important}
-      .comp-toolbar{display:none!important}
+      .annual-comp-a4{width:297mm!important;min-height:210mm!important;padding:10mm!important;box-sizing:border-box!important;}
+      .annual-comp-toolbar{display:none!important;}
+      .annual-comp-paper{border:none!important;padding:0!important;overflow:visible!important;}
+      .annual-comp-block,.annual-comp-kpi{page-break-inside:avoid!important;break-inside:avoid!important;}
     }
   `;
+
   document.head.appendChild(style);
 }
 
-function ensureComplianceReportPage() {
-  injectComplianceReportStyle();
+function annualCompDedupeTabs() {
+  const tabsWrap = document.querySelector('.tabs');
+  if (!tabsWrap) return;
 
-  const tabs = document.querySelector('.tabs');
-  if (tabs && !document.getElementById('tab-compliance-report')) {
-    tabs.insertAdjacentHTML(
+  const tabs = [...tabsWrap.querySelectorAll('.tab')].filter(t =>
+    (t.textContent || '').toLowerCase().includes('compliance report')
+  );
+
+  let keep = document.getElementById('tab-compliance-report') || tabs[0];
+
+  if (!keep) {
+    tabsWrap.insertAdjacentHTML(
       'beforeend',
-      `<button id="tab-compliance-report" class="tab" onclick="swComplianceReport(event)">📊 Compliance Report</button>`
+      '<button id="tab-compliance-report" class="tab" onclick="swComplianceReport(event)">📊 Compliance Report</button>'
     );
+    return;
   }
 
-  if (document.getElementById('page-compliance-report')) return;
+  keep.id = 'tab-compliance-report';
+  keep.classList.add('tab');
+  keep.setAttribute('onclick', 'swComplianceReport(event)');
+  keep.innerHTML = '📊 Compliance Report';
+
+  tabs.forEach(t => {
+    if (t !== keep) t.remove();
+  });
+}
+
+function annualCompEnsurePage() {
+  annualCompInjectStyle();
+  annualCompDedupeTabs();
+
+  const existing = document.getElementById('page-compliance-report');
+  if (existing && existing.dataset.annualV2 === 'true') return;
+
+  document.querySelectorAll('#page-compliance-report').forEach(p => p.remove());
 
   const pageHTML = `
-    <div class="page" id="page-compliance-report">
+    <div class="page" id="page-compliance-report" data-annual-v2="true">
       <div class="sec-hdr purple">
         <div class="sec-hdr-icon">📊</div>
         <div class="sec-hdr-text">
-          <h2>Compliance Report</h2>
-          <p>รายงานภาพรวม Compliance rate และจำนวนการส่งแบบประเมินรายเดือน</p>
+          <h2>Annual Compliance Report</h2>
+          <p>รายงานสถิติทั้งปีแบบกระดาษแนวนอน: Compliance rate และจำนวนการส่งแบบประเมิน</p>
         </div>
       </div>
 
@@ -1950,38 +1979,38 @@ function ensureComplianceReportPage() {
           <div>
             <div class="card-title" style="font-size:1.1rem;color:var(--blue);">
               <span class="dot" style="background:var(--blue)"></span>
-              📊 Monthly Compliance Report
+              📊 Annual Compliance Report
             </div>
             <div class="card-sub" style="font-size:.8rem;margin-top:4px;">
-              เลือกเดือน หน่วยงาน และ Bundle เพื่อดู Compliance rate เทียบกับจำนวนการส่งแบบประเมิน
+              เลือกปี หน่วยงาน และ Bundle เพื่อสร้างกราฟทั้งปี 2 กราฟ: Compliance rate และจำนวนการส่ง
             </div>
           </div>
         </div>
 
-        <div class="comp-toolbar">
-          <div class="comp-field">
-            <label>เดือน</label>
-            <select id="comp-month-select"></select>
+        <div class="annual-comp-toolbar">
+          <div class="annual-comp-field">
+            <label>ปี</label>
+            <select id="annual-comp-year-select"></select>
           </div>
-          <div class="comp-field">
+          <div class="annual-comp-field">
             <label>หน่วยงาน</label>
-            <select id="comp-ward-select"></select>
+            <select id="annual-comp-ward-select"></select>
           </div>
-          <div class="comp-field">
+          <div class="annual-comp-field">
             <label>Bundle</label>
-            <select id="comp-bundle-select"></select>
+            <select id="annual-comp-bundle-select"></select>
           </div>
 
-          <button class="report-btn primary" onclick="renderComplianceReport()">🔄 สร้างรายงาน</button>
-          <button class="report-btn soft" onclick="exportComplianceReportPNG()">🖼️ PNG</button>
-          <button class="report-btn soft" onclick="exportComplianceReportPDF()">📄 Save PDF</button>
-          <button class="report-btn soft" onclick="printComplianceReport()">🖨️ พิมพ์</button>
+          <button class="report-btn primary" onclick="renderAnnualComplianceReport()">🔄 สร้างรายงาน</button>
+          <button class="report-btn soft" onclick="exportAnnualComplianceReportPNG()">🖼️ PNG</button>
+          <button class="report-btn soft" onclick="exportAnnualComplianceReportPDF()">📄 PDF</button>
+          <button class="report-btn soft" onclick="printAnnualComplianceReport()">🖨️ พิมพ์</button>
         </div>
 
-        <div id="compliance-report-paper" class="comp-paper">
+        <div id="annual-comp-paper" class="annual-comp-paper">
           <div class="report-empty">
             <b>กดสร้างรายงาน</b>
-            <div class="report-small-note">ระบบจะเลือกเดือนล่าสุดให้อัตโนมัติ</div>
+            <div class="report-small-note">ระบบจะแสดงกราฟทั้งปีแบบแนวนอน</div>
           </div>
         </div>
       </div>
@@ -1989,86 +2018,80 @@ function ensureComplianceReportPage() {
   `;
 
   const pageReport = document.getElementById('page-report');
-  if (pageReport) {
-    pageReport.insertAdjacentHTML('afterend', pageHTML);
-  } else {
-    document.querySelector('.wrap')?.insertAdjacentHTML('beforeend', pageHTML);
-  }
+  if (pageReport) pageReport.insertAdjacentHTML('afterend', pageHTML);
+  else document.querySelector('.wrap')?.insertAdjacentHTML('beforeend', pageHTML);
 }
 
 function swComplianceReport(e) {
-  ensureComplianceReportPage();
+  annualCompEnsurePage();
 
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-
-  const btn = e?.currentTarget || document.getElementById('tab-compliance-report') || [...document.querySelectorAll('.tab')].find(t => t.textContent.includes('Compliance Report'));
+  const btn = e?.currentTarget || document.getElementById('tab-compliance-report');
   if (btn) btn.classList.add('active');
 
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-compliance-report')?.classList.add('active');
 
-  initComplianceReportFilters();
+  initAnnualComplianceReportFilters();
 }
 
-function compMonthKey(v) {
-  if (typeof monthKeyFromDate === 'function') return monthKeyFromDate(v);
-  const d = safeDate(v);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
-
-function compMonthLabel(key) {
-  if (typeof monthLabelTH === 'function') return monthLabelTH(key);
-  return key || '--';
-}
-
-function compNormalizeBundle(v) {
+function annualNormalizeBundle(v) {
   if (typeof normalizeBundleType === 'function') return normalizeBundleType(v);
-  return String(v || '').trim();
+  const s = String(v || '').trim().toUpperCase();
+  const raw = String(v || '').trim();
+  if (s.includes('CAUTI')) return 'CAUTI';
+  if (s.includes('CLABSI')) return 'CLABSI';
+  if (s.includes('VAP')) return 'VAP';
+  if (s.includes('SSI')) return 'SSI';
+  if (s.includes('HAND')) return 'HAND HYGIENE';
+  if (s.includes('MDR') || s.includes('MRSA') || s.includes('CRE') || s.includes('VRE') || raw.includes('เชื้อดื้อยา')) return 'เชื้อดื้อยา';
+  return raw;
 }
 
-function compNormalizeAnswer(v) {
+function annualNormalizeAnswer(v) {
   if (typeof normalizeAnswer === 'function') return normalizeAnswer(v);
 
   const s = String(v ?? '').trim().toUpperCase();
-
   if (['Y','YES','TRUE','1','ใช่','ทำ','ปฏิบัติ','ทำ/ใช่','/'].includes(s)) return 'Y';
   if (['N','NO','FALSE','0','ไม่','ไม่ทำ','ไม่ใช่','ไม่ปฏิบัติ'].includes(s)) return 'N';
   if (['NA','N/A','N.A.','-','ไม่เกี่ยวข้อง','ไม่ประเมิน'].includes(s)) return 'NA';
-
   return '';
 }
 
-function compEscape(v) {
+function annualEscape(v) {
   if (typeof escapeHTML === 'function') return escapeHTML(v);
-
   return String(v ?? '')
     .replaceAll('&','&amp;')
     .replaceAll('<','&lt;')
     .replaceAll('>','&gt;')
     .replaceAll('"','&quot;')
-    .replaceAll("'","&#039;");
+    .replaceAll("'",'&#039;');
 }
 
-function compFormatPercent(p) {
+function annualFormatPercent(p) {
   if (p === null || p === undefined || isNaN(p)) return 'N/A';
   return `${Number(p) % 1 === 0 ? Number(p).toFixed(0) : Number(p).toFixed(1)}%`;
 }
 
-function compGetQuestionMax(bundleType) {
+function annualThaiYearLabel(yearCE) {
+  return String(Number(yearCE) + 543);
+}
+
+function annualGetQuestionMax(bundleType) {
   const labels = typeof REPORT_QUESTION_LABELS !== 'undefined' ? (REPORT_QUESTION_LABELS[bundleType] || []) : [];
   return Math.max(16, labels.length);
 }
 
-function compCompliancePercent(rows) {
+function annualCompliancePercent(rows) {
   let y = 0;
   let n = 0;
 
   rows.forEach(r => {
-    const bundleType = compNormalizeBundle(r.bundleType);
-    const maxQ = compGetQuestionMax(bundleType);
+    const bundleType = annualNormalizeBundle(r.bundleType);
+    const maxQ = annualGetQuestionMax(bundleType);
 
     for (let i = 1; i <= maxQ; i++) {
-      const ans = compNormalizeAnswer(r[`Q${i}`] || r[`q${i}`] || r[`ข้อ${i}`]);
+      const ans = annualNormalizeAnswer(r[`Q${i}`] || r[`q${i}`] || r[`ข้อ${i}`]);
       if (ans === 'Y') y++;
       if (ans === 'N') n++;
     }
@@ -2077,19 +2100,28 @@ function compCompliancePercent(rows) {
   return y + n > 0 ? Math.round((y / (y + n)) * 1000) / 10 : null;
 }
 
-function initComplianceReportFilters() {
-  ensureComplianceReportPage();
+function annualGetYearFromDate(v) {
+  const d = typeof safeDate === 'function' ? safeDate(v) : new Date(v);
+  return d && !isNaN(d) ? d.getFullYear() : '';
+}
 
-  const monthEl = document.getElementById('comp-month-select');
-  const wardEl = document.getElementById('comp-ward-select');
-  const bundleEl = document.getElementById('comp-bundle-select');
+function annualGetMonthFromDate(v) {
+  const d = typeof safeDate === 'function' ? safeDate(v) : new Date(v);
+  return d && !isNaN(d) ? d.getMonth() : -1;
+}
 
-  if (!monthEl || !wardEl || !bundleEl) return;
+function initAnnualComplianceReportFilters() {
+  annualCompEnsurePage();
+
+  const yearEl = document.getElementById('annual-comp-year-select');
+  const wardEl = document.getElementById('annual-comp-ward-select');
+  const bundleEl = document.getElementById('annual-comp-bundle-select');
+  if (!yearEl || !wardEl || !bundleEl) return;
 
   const rows = DB.bundle || [];
 
   if (!rows.length) {
-    document.getElementById('compliance-report-paper').innerHTML = `
+    document.getElementById('annual-comp-paper').innerHTML = `
       <div class="report-empty">
         <b>ยังไม่มีข้อมูล Bundle ในระบบ</b>
         <div class="report-small-note">ลองกด Refresh หรือรอให้โหลดข้อมูลก่อน</div>
@@ -2098,227 +2130,189 @@ function initComplianceReportFilters() {
     return;
   }
 
-  const curMonth = monthEl.value;
+  const curYear = yearEl.value;
   const curWard = wardEl.value;
   const curBundle = bundleEl.value;
 
-  const months = [...new Set(rows.map(r => compMonthKey(r.timestamp)).filter(Boolean))].sort().reverse();
+  const years = [...new Set(rows.map(r => annualGetYearFromDate(r.timestamp)).filter(Boolean))].sort((a,b) => b - a);
   const wards = [...new Set(rows.map(r => r.ward).filter(Boolean))].sort();
-
   const priority = typeof REPORT_BUNDLES !== 'undefined'
     ? REPORT_BUNDLES
     : ['VAP','CAUTI','CLABSI','SSI','เชื้อดื้อยา','HAND HYGIENE'];
 
-  const bundles = [...new Set(rows.map(r => compNormalizeBundle(r.bundleType)).filter(Boolean))]
+  const bundles = [...new Set(rows.map(r => annualNormalizeBundle(r.bundleType)).filter(Boolean))]
     .sort((a,b) => {
       const ai = priority.indexOf(a);
       const bi = priority.indexOf(b);
       return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
     });
 
-  monthEl.innerHTML = months.map(m => `<option value="${compEscape(m)}">${compEscape(compMonthLabel(m))}</option>`).join('');
-  wardEl.innerHTML = `<option value="all">ทุกหน่วยงาน</option>${wards.map(w => `<option value="${compEscape(w)}">${compEscape(w)}</option>`).join('')}`;
-  bundleEl.innerHTML = `<option value="all">ทุก Bundle</option>${bundles.map(b => `<option value="${compEscape(b)}">${compEscape(b === 'เชื้อดื้อยา' ? 'MDR / เชื้อดื้อยา' : b)}</option>`).join('')}`;
+  yearEl.innerHTML = years.map(y => `<option value="${annualEscape(y)}">${annualEscape(annualThaiYearLabel(y))}</option>`).join('');
+  wardEl.innerHTML = `<option value="all">ทุกหน่วยงาน</option>${wards.map(w => `<option value="${annualEscape(w)}">${annualEscape(w)}</option>`).join('')}`;
+  bundleEl.innerHTML = `<option value="all">ทุก Bundle</option>${bundles.map(b => `<option value="${annualEscape(b)}">${annualEscape(b === 'เชื้อดื้อยา' ? 'MDR / เชื้อดื้อยา' : b)}</option>`).join('')}`;
 
-  if (curMonth && months.includes(curMonth)) monthEl.value = curMonth;
+  if (curYear && years.map(String).includes(String(curYear))) yearEl.value = curYear;
   if (curWard && (curWard === 'all' || wards.includes(curWard))) wardEl.value = curWard;
   if (curBundle && (curBundle === 'all' || bundles.includes(curBundle))) bundleEl.value = curBundle;
 
-  monthEl.onchange = renderComplianceReport;
-  wardEl.onchange = renderComplianceReport;
-  bundleEl.onchange = renderComplianceReport;
+  yearEl.onchange = renderAnnualComplianceReport;
+  wardEl.onchange = renderAnnualComplianceReport;
+  bundleEl.onchange = renderAnnualComplianceReport;
 
-  renderComplianceReport();
+  renderAnnualComplianceReport();
 }
 
-function compGetScopeRows() {
-  const month = document.getElementById('comp-month-select')?.value || '';
-  const ward = document.getElementById('comp-ward-select')?.value || 'all';
-  const bundle = compNormalizeBundle(document.getElementById('comp-bundle-select')?.value || 'all');
+function annualGetScopeRows() {
+  const year = Number(document.getElementById('annual-comp-year-select')?.value || new Date().getFullYear());
+  const ward = document.getElementById('annual-comp-ward-select')?.value || 'all';
+  const bundle = annualNormalizeBundle(document.getElementById('annual-comp-bundle-select')?.value || 'all');
 
-  let rows = (DB.bundle || []).filter(r => compMonthKey(r.timestamp) === month);
-
+  let rows = (DB.bundle || []).filter(r => annualGetYearFromDate(r.timestamp) === year);
   if (ward !== 'all') rows = rows.filter(r => r.ward === ward);
-  if (bundle !== 'all') rows = rows.filter(r => compNormalizeBundle(r.bundleType) === bundle);
+  if (bundle !== 'all') rows = rows.filter(r => annualNormalizeBundle(r.bundleType) === bundle);
 
   return rows;
 }
 
-function buildCompBarRows(items, mode) {
+function annualBuildMonthItems(rows) {
+  const monthNames = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+  return monthNames.map((label, monthIndex) => {
+    const monthRows = rows.filter(r => annualGetMonthFromDate(r.timestamp) === monthIndex);
+    return {
+      label,
+      count: monthRows.length,
+      percent: annualCompliancePercent(monthRows)
+    };
+  });
+}
+
+function annualBuildBars(items, mode) {
   const maxCount = Math.max(...items.map(x => x.count), 1);
 
   return items.map(item => {
-    const value = mode === 'rate' ? item.percent : item.count;
-    const width = mode === 'rate'
-      ? Math.max(0, Math.min(100, item.percent || 0))
-      : Math.max(2, Math.round((item.count / maxCount) * 100));
+    const isRate = mode === 'rate';
+    const isNA = isRate && item.percent === null;
+    const valueText = isRate ? annualFormatPercent(item.percent) : `${item.count} ครั้ง`;
+    const width = isRate
+      ? (isNA ? 100 : Math.max(0, Math.min(100, item.percent || 0)))
+      : Math.max(item.count > 0 ? 3 : 0, Math.round((item.count / maxCount) * 100));
 
     return `
-      <div class="comp-row">
-        <div class="comp-label">${compEscape(item.label)}</div>
-        <div class="comp-track">
-          <div class="comp-fill ${mode === 'count' ? 'count' : ''}" style="width:${width}%"></div>
-          ${mode === 'rate' ? '<div class="comp-standard"></div>' : ''}
+      <div class="annual-comp-row">
+        <div class="annual-comp-label">${annualEscape(item.label)}</div>
+        <div class="annual-comp-track">
+          <div class="annual-comp-fill ${mode === 'count' ? 'count' : ''} ${isNA ? 'na' : ''}" style="width:${width}%"></div>
+          ${isRate ? '<div class="annual-comp-standard"></div>' : ''}
         </div>
-        <div class="comp-value">${mode === 'rate' ? compFormatPercent(value) : value + ' ครั้ง'}</div>
+        <div class="annual-comp-value">${valueText}</div>
       </div>
     `;
   }).join('');
 }
 
-function renderComplianceReport() {
-  ensureComplianceReportPage();
+function renderAnnualComplianceReport() {
+  annualCompEnsurePage();
 
-  const paper = document.getElementById('compliance-report-paper');
+  const paper = document.getElementById('annual-comp-paper');
   if (!paper) return;
 
-  const month = document.getElementById('comp-month-select')?.value || '';
-  const ward = document.getElementById('comp-ward-select')?.value || 'all';
-  const bundle = compNormalizeBundle(document.getElementById('comp-bundle-select')?.value || 'all');
-  const rows = compGetScopeRows();
+  const year = Number(document.getElementById('annual-comp-year-select')?.value || new Date().getFullYear());
+  const ward = document.getElementById('annual-comp-ward-select')?.value || 'all';
+  const bundle = annualNormalizeBundle(document.getElementById('annual-comp-bundle-select')?.value || 'all');
+  const rows = annualGetScopeRows();
 
   if (!rows.length) {
     paper.innerHTML = `
       <div class="report-empty">
         <b>ไม่พบข้อมูลตามเงื่อนไขที่เลือก</b>
-        <div class="report-small-note">ลองเปลี่ยนเดือน หน่วยงาน หรือ Bundle</div>
+        <div class="report-small-note">ลองเปลี่ยนปี หน่วยงาน หรือ Bundle</div>
       </div>
     `;
     return;
   }
 
-  const groupByWard = ward === 'all';
-  const map = new Map();
-
-  rows.forEach(r => {
-    const key = groupByWard ? (r.ward || 'ไม่ระบุ') : compNormalizeBundle(r.bundleType);
-    if (!map.has(key)) map.set(key, []);
-    map.get(key).push(r);
-  });
-
-  const items = [...map.entries()].map(([label, groupRows]) => ({
-    label: label === 'เชื้อดื้อยา' ? 'MDR / เชื้อดื้อยา' : label,
-    rawLabel: label,
-    count: groupRows.length,
-    percent: compCompliancePercent(groupRows)
-  })).sort((a, b) => (b.percent ?? -1) - (a.percent ?? -1));
-
-  const countItems = [...items].sort((a, b) => b.count - a.count);
-  const overall = compCompliancePercent(rows);
-  const submittedWardCount = new Set(rows.map(r => r.ward).filter(Boolean)).size;
-  const bundleCount = new Set(rows.map(r => compNormalizeBundle(r.bundleType)).filter(Boolean)).size;
+  const items = annualBuildMonthItems(rows);
+  const overall = annualCompliancePercent(rows);
   const totalAssess = rows.length;
-  const low = [...items].filter(x => x.percent !== null).sort((a,b) => a.percent - b.percent)[0];
-  const high = [...items].filter(x => x.percent !== null).sort((a,b) => b.percent - a.percent)[0];
-
-  const assessedWards = new Set(rows.map(r => r.ward).filter(Boolean));
-  const wardList = typeof ALL_MDH_WARDS !== 'undefined'
-    ? ALL_MDH_WARDS
-    : [...new Set((DB.bundle || []).map(r => r.ward).filter(Boolean))];
-
-  let missingList = [];
-
-  if (ward === 'all') {
-    missingList = wardList.filter(w => !assessedWards.has(w));
-  } else {
-    const sentBundles = new Set(rows.map(r => compNormalizeBundle(r.bundleType)).filter(Boolean));
-    const priority = typeof REPORT_BUNDLES !== 'undefined' ? REPORT_BUNDLES : [];
-    missingList = priority
-      .filter(b => !sentBundles.has(b))
-      .map(b => b === 'เชื้อดื้อยา' ? 'MDR / เชื้อดื้อยา' : b);
-  }
-
-  const missingHtml = missingList.length
-    ? missingList.map(x => `<span class="comp-chip">${compEscape(x)}</span>`).join('')
-    : '<span style="font-weight:900;color:#16a34a;">ส่งข้อมูลครบตามเงื่อนไขที่เลือก</span>';
-
-  const tableRows = items.map(x => `
-    <tr>
-      <td>${compEscape(x.label)}</td>
-      <td class="num">${x.count}</td>
-      <td class="num">${compFormatPercent(x.percent)}</td>
-    </tr>
-  `).join('');
+  const sentMonthCount = items.filter(x => x.count > 0).length;
+  const maxMonth = [...items].sort((a,b) => b.count - a.count)[0];
+  const lowMonth = [...items].filter(x => x.percent !== null).sort((a,b) => a.percent - b.percent)[0];
+  const noSendMonths = items.filter(x => x.count === 0).map(x => x.label);
 
   const scopeText = `${ward === 'all' ? 'ทุกหน่วยงาน' : ward} | ${bundle === 'all' ? 'ทุก Bundle' : (bundle === 'เชื้อดื้อยา' ? 'MDR / เชื้อดื้อยา' : bundle)}`;
-  const axisLabel = groupByWard ? 'หน่วยงาน' : 'Bundle';
+
+  const noSendHtml = noSendMonths.length
+    ? noSendMonths.map(m => `<span class="annual-comp-chip">${annualEscape(m)}</span>`).join('')
+    : '<span class="annual-comp-chip annual-comp-ok">ส่งครบทุกเดือนที่มีในปีนี้</span>';
 
   paper.innerHTML = `
-    <div class="comp-a4">
-      <div class="comp-title">รายงาน Compliance Report (${compEscape(compMonthLabel(month))})</div>
-      <div class="comp-sub">${compEscape(scopeText)} | เปรียบเทียบ Compliance rate และจำนวนการส่งแบบประเมิน</div>
+    <div class="annual-comp-a4" id="annual-comp-export-area">
+      <div class="annual-comp-title">รายงานสถิติ Compliance รายปี ${annualEscape(annualThaiYearLabel(year))}</div>
+      <div class="annual-comp-sub">${annualEscape(scopeText)} | แสดงผลรายเดือนทั้งปีแบบแนวนอน</div>
 
-      <div class="comp-kpis">
-        <div class="comp-kpi"><div class="comp-kpi-label">Compliance เฉลี่ย</div><div class="comp-kpi-value">${compFormatPercent(overall)}</div></div>
-        <div class="comp-kpi"><div class="comp-kpi-label">จำนวนส่งทั้งหมด</div><div class="comp-kpi-value">${totalAssess} ครั้ง</div></div>
-        <div class="comp-kpi"><div class="comp-kpi-label">หน่วยงานที่ส่ง</div><div class="comp-kpi-value">${submittedWardCount}</div></div>
-        <div class="comp-kpi"><div class="comp-kpi-label">จำนวน Bundle</div><div class="comp-kpi-value">${bundleCount}</div></div>
-      </div>
-
-      <div class="comp-grid">
-        <div class="comp-block">
-          <div class="comp-block-title">
-            <span>1. Compliance Rate by ${axisLabel}</span>
-            <span class="comp-block-sub">เกณฑ์อ้างอิง 90%</span>
-          </div>
-          <div class="comp-chart">${buildCompBarRows(items, 'rate')}</div>
+      <div class="annual-comp-kpis">
+        <div class="annual-comp-kpi">
+          <div class="annual-comp-kpi-label">Compliance เฉลี่ยทั้งปี</div>
+          <div class="annual-comp-kpi-value">${annualFormatPercent(overall)}</div>
         </div>
-
-        <div class="comp-block">
-          <div class="comp-block-title">
-            <span>2. Submission Count by ${axisLabel}</span>
-            <span class="comp-block-sub">จำนวนครั้งที่ส่ง</span>
-          </div>
-          <div class="comp-chart">${buildCompBarRows(countItems, 'count')}</div>
+        <div class="annual-comp-kpi">
+          <div class="annual-comp-kpi-label">จำนวนส่งทั้งหมด</div>
+          <div class="annual-comp-kpi-value">${totalAssess} ครั้ง</div>
+        </div>
+        <div class="annual-comp-kpi">
+          <div class="annual-comp-kpi-label">เดือนที่มีการส่ง</div>
+          <div class="annual-comp-kpi-value">${sentMonthCount}/12 เดือน</div>
+        </div>
+        <div class="annual-comp-kpi">
+          <div class="annual-comp-kpi-label">ส่งมากที่สุด</div>
+          <div class="annual-comp-kpi-value">${maxMonth ? `${annualEscape(maxMonth.label)} ${maxMonth.count} ครั้ง` : 'N/A'}</div>
         </div>
       </div>
 
-      <div class="comp-insights">
-        <div class="comp-block">
-          <div class="comp-block-title">3. Summary Matrix</div>
-          <table class="comp-table">
-            <thead>
-              <tr>
-                <th>${axisLabel}</th>
-                <th class="num">จำนวนส่ง</th>
-                <th class="num">Compliance</th>
-              </tr>
-            </thead>
-            <tbody>${tableRows}</tbody>
-          </table>
+      <div class="annual-comp-grid">
+        <div class="annual-comp-block">
+          <div class="annual-comp-block-title">
+            <span>1. Compliance Rate รายเดือน</span>
+            <span class="annual-comp-block-sub">เส้นแดง = เกณฑ์ 90%</span>
+          </div>
+          <div class="annual-comp-chart">${annualBuildBars(items, 'rate')}</div>
         </div>
 
-        <div class="comp-block">
-          <div class="comp-block-title">4. จุดที่ควรติดตาม</div>
-          <div style="padding:12px;line-height:1.65;font-size:.86rem;">
-            <div>✅ สูงสุด: <b>${high ? compEscape(high.label) + ' ' + compFormatPercent(high.percent) : 'N/A'}</b></div>
-            <div>⚠️ ต่ำสุด: <b>${low ? compEscape(low.label) + ' ' + compFormatPercent(low.percent) : 'N/A'}</b></div>
-            <div style="margin-top:8px;color:#64748b;font-weight:800;">รายการที่ไม่มีการส่งตามเงื่อนไขนี้</div>
+        <div class="annual-comp-block">
+          <div class="annual-comp-block-title">
+            <span>2. จำนวนการส่งแบบประเมินรายเดือน</span>
+            <span class="annual-comp-block-sub">Submission Count</span>
           </div>
-          <div class="comp-chip-box">${missingHtml}</div>
+          <div class="annual-comp-chart">${annualBuildBars(items, 'count')}</div>
         </div>
       </div>
 
-      <div class="comp-note">สร้างจากข้อมูล Master_Bundle_Log | คำนวณ Compliance = Y ÷ (Y + N) × 100 โดยไม่นับ NA</div>
+      <div class="annual-comp-footer">
+        <div class="annual-comp-note">
+          <b>สรุป:</b>
+          เดือนที่ Compliance ต่ำสุดคือ <b>${lowMonth ? `${annualEscape(lowMonth.label)} ${annualFormatPercent(lowMonth.percent)}` : 'N/A'}</b><br>
+          คำนวณ Compliance = Y ÷ (Y + N) × 100 โดยไม่นับ NA
+        </div>
+        <div>
+          <div class="annual-comp-note" style="text-align:right;font-weight:800;margin-bottom:5px;">เดือนที่ไม่มีการส่งตามเงื่อนไขนี้</div>
+          <div class="annual-comp-chipbox">${noSendHtml}</div>
+        </div>
+      </div>
     </div>
   `;
 }
 
-async function exportComplianceReportPNG() {
-  renderComplianceReport();
+async function exportAnnualComplianceReportPNG() {
+  renderAnnualComplianceReport();
 
-  const paper = document.getElementById('compliance-report-paper');
-  if (!paper) return;
+  const area = document.getElementById('annual-comp-export-area');
+  if (!area) return;
 
   try {
-    const canvas = await html2canvas(paper, {
-      scale: 2,
-      backgroundColor: '#ffffff',
-      useCORS: true
-    });
-
+    const canvas = await html2canvas(area, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
     const link = document.createElement('a');
-    link.download = `Compliance_Report_${document.getElementById('comp-month-select')?.value || 'month'}.png`;
+    link.download = `Annual_Compliance_Report_${document.getElementById('annual-comp-year-select')?.value || 'year'}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
   } catch (err) {
@@ -2326,11 +2320,63 @@ async function exportComplianceReportPNG() {
   }
 }
 
-function printComplianceReport() {
-  renderComplianceReport();
+async function annualEnsureJsPDF() {
+  if (window.jspdf && window.jspdf.jsPDF) return window.jspdf.jsPDF;
 
-  const paper = document.getElementById('compliance-report-paper');
-  if (!paper) return;
+  await new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+
+  return window.jspdf.jsPDF;
+}
+
+async function exportAnnualComplianceReportPDF() {
+  renderAnnualComplianceReport();
+
+  const area = document.getElementById('annual-comp-export-area');
+  if (!area) return;
+
+  try {
+    const jsPDF = await annualEnsureJsPDF();
+    const canvas = await html2canvas(area, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const imgData = canvas.toDataURL('image/png');
+
+    const pdf = new jsPDF('l', 'mm', 'a4');
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+
+    const margin = 6;
+    const imgW = pageW - margin * 2;
+    const imgH = canvas.height * imgW / canvas.width;
+
+    let heightLeft = imgH;
+    let position = margin;
+
+    pdf.addImage(imgData, 'PNG', margin, position, imgW, imgH);
+    heightLeft -= (pageH - margin * 2);
+
+    while (heightLeft > 0) {
+      pdf.addPage();
+      position = heightLeft - imgH + margin;
+      pdf.addImage(imgData, 'PNG', margin, position, imgW, imgH);
+      heightLeft -= (pageH - margin * 2);
+    }
+
+    pdf.save(`Annual_Compliance_Report_${document.getElementById('annual-comp-year-select')?.value || 'year'}.pdf`);
+  } catch (err) {
+    alert('Export PDF ไม่สำเร็จ: ' + err.message + '\nถ้าไม่สำเร็จ ให้กดปุ่มพิมพ์ แล้วเลือก Save as PDF แทน');
+  }
+}
+
+function printAnnualComplianceReport() {
+  renderAnnualComplianceReport();
+
+  const area = document.getElementById('annual-comp-export-area');
+  if (!area) return;
 
   const css = Array.from(document.querySelectorAll('style')).map(s => s.innerHTML).join('\n');
   const win = window.open('', '_blank');
@@ -2338,33 +2384,28 @@ function printComplianceReport() {
   win.document.write(`
     <html>
       <head>
-        <title>Compliance Report</title>
+        <title>Annual Compliance Report</title>
         <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
         <style>
           ${css}
           *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
           body{background:#fff!important;margin:0!important;padding:0!important;font-family:'IBM Plex Sans Thai',sans-serif!important;}
-          .comp-paper{border:none!important;padding:0!important;}
-          .comp-a4{padding:12mm!important;}
-          @page{size:A4 portrait;margin:0;}
+          .annual-comp-a4{width:297mm!important;min-height:210mm!important;padding:10mm!important;box-sizing:border-box!important;}
+          @page{size:A4 landscape;margin:0;}
         </style>
       </head>
-      <body>${paper.outerHTML}</body>
+      <body>${area.outerHTML}</body>
     </html>
   `);
 
   win.document.close();
   win.focus();
-
   setTimeout(() => win.print(), 500);
 }
 
-function exportComplianceReportPDF() {
-  printComplianceReport();
-}
+annualCompEnsurePage();
+// ==================== END SAFE PATCH V2: ANNUAL COMPLIANCE REPORT ====================
 
-ensureComplianceReportPage();
-// ==================== END SAFE PATCH: COMPLIANCE REPORT PAGE ====================
   
 loadAll();
 setInterval(loadAll, 5*60*1000);
