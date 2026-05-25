@@ -590,11 +590,26 @@ const ALL_MDH_WARDS = [
 ];
 
 async function fetchSheet(sheet) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
   try {
-    const r = await fetch(`${API}?api=true&sheet=${sheet}`);
-    const j = await r.json();
+    const r = await fetch(`${API}?api=true&sheet=${encodeURIComponent(sheet)}&ts=${Date.now()}`, {
+      signal: controller.signal,
+      cache: 'no-store'
+    });
+
+    clearTimeout(timeoutId);
+
+    const text = await r.text();
+    const j = JSON.parse(text);
+
     return Array.isArray(j) ? j : [];
-  } catch(e) { console.error(sheet, e); return []; }
+  } catch (e) {
+    clearTimeout(timeoutId);
+    console.error('fetchSheet failed:', sheet, e);
+    return [];
+  }
 }
 
 async function loadAll() {
@@ -2023,7 +2038,11 @@ function annualCompEnsurePage() {
 }
 
 function swComplianceReport(e) {
+try {
   annualCompEnsurePage();
+} catch (e) {
+  console.error('Annual Compliance init error:', e);
+}
 
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   const btn = e?.currentTarget || document.getElementById('tab-compliance-report');
@@ -2407,8 +2426,18 @@ annualCompEnsurePage();
 // ==================== END SAFE PATCH V2: ANNUAL COMPLIANCE REPORT ====================
 
   
-loadAll();
-setInterval(loadAll, 5*60*1000);
+loadAll().catch(e => {
+  console.error('loadAll fatal:', e);
+
+  const upd = document.getElementById('upd');
+  if (upd) {
+    upd.textContent = 'โหลดข้อมูลไม่สำเร็จ: ' + e.message;
+  }
+});
+
+setInterval(() => {
+  loadAll().catch(e => console.error('auto loadAll fatal:', e));
+}, 5 * 60 * 1000);
 </script>
 </body>
 </html>
