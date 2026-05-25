@@ -2231,7 +2231,11 @@ function annualBuildBars(items, mode) {
 }
 
 function renderAnnualComplianceReport() {
+try {
   annualCompEnsurePage();
+} catch (e) {
+  console.error('Annual Compliance init error:', e);
+}
 
   const paper = document.getElementById('annual-comp-paper');
   if (!paper) return;
@@ -2422,7 +2426,11 @@ function printAnnualComplianceReport() {
   setTimeout(() => win.print(), 500);
 }
 
-annualCompEnsurePage();
+try {
+  annualCompEnsurePage();
+} catch (e) {
+  console.error('Annual Compliance init error:', e);
+}
 // ==================== END SAFE PATCH V2: ANNUAL COMPLIANCE REPORT ====================
 
   
